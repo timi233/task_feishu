@@ -6,7 +6,20 @@ import { getWeekRange, getMonthRange, getWeekNumber } from '../utils/dateUtils';
  */
 export default function useTimeFilter(initialView = 'week') {
     const [currentView, setCurrentView] = useState(initialView === 'month' ? 'month' : 'week');
-    const [currentDate, setCurrentDate] = useState(() => new Date());
+    const [currentDate, setCurrentDate] = useState(() => {
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0=周日, 6=周六
+
+        // 周六周日时,跳到下周一
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            const daysToNextMonday = dayOfWeek === 0 ? 1 : 2;
+            const nextMonday = new Date(today);
+            nextMonday.setDate(today.getDate() + daysToNextMonday);
+            return nextMonday;
+        }
+
+        return today;
+    });
 
     const setView = useCallback((view) => {
         setCurrentView(view === 'month' ? 'month' : 'week');

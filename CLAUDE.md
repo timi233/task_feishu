@@ -8,6 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **核心数据流**: 飞书API → 同步脚本 → 数据库(SQLite/MySQL) → FastAPI API → React SPA
 
+**核心功能**:
+- 🔄 自动数据同步: 页面打开时立即同步,之后每小时自动同步一次
+- 📊 多视图展示: 周视图、月视图、按日期视图、按工程师视图
+- ⚡ 手动同步: 用户可随时手动触发数据同步
+- 🎛️ 用户控制: 支持开启/关闭自动同步,显示下次同步倒计时
+- 🔍 任务筛选: 支持优先级、状态等多维度筛选
+- 📈 统计面板: 实时统计不同优先级任务数量
+
 ## 常用命令
 
 ### 后端开发

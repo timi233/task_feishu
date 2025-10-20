@@ -16,8 +16,18 @@ services:
       - FEISHU_APP_SECRET=${FEISHU_APP_SECRET}
       - FEISHU_APP_TOKEN=${FEISHU_APP_TOKEN}
       - FEISHU_TABLE_ID=${FEISHU_TABLE_ID}
+
+      # API认证配置(新增)
+      - API_KEYS=${API_KEYS}
+      - READONLY_API_KEYS=${READONLY_API_KEYS}
+      - API_RATE_LIMIT=${API_RATE_LIMIT:-100}
+
+      # CORS配置(新增)
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+
       # 其他环境变量
       - BACKEND_PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       # 挂载卷以持久化SQLite数据库文件
       # 将主机的 ./data 目录挂载到容器的 /app 目录
@@ -25,6 +35,15 @@ services:
       - ./data/db:/app/db
       # 挂载卷以使用宿主机上修改后的filter_config.json文件
       - ./backend/filter_config.json:/app/filter_config.json
+
+    # 健康检查(新增)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
     # 重启策略
     restart: unless-stopped
 
@@ -36,6 +55,7 @@ services:
     ports:
       - "8080:80"  # Expose Nginx on port 8080 to avoid conflict with host's port 80
     depends_on:
-      - app
+      app:
+        condition: service_healthy  # 等待后端健康检查通过
     # 重启策略
     restart: unless-stopped

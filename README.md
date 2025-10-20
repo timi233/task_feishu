@@ -1,4 +1,64 @@
-# 派工系统 Docker 部署指南
+# 派工管理系统
+
+飞书派工系统 - 从飞书多维表格同步任务数据,提供多视图展示和自动同步功能。
+
+## 核心功能
+
+- 🔄 **智能同步**: 页面打开时自动同步,之后每小时自动同步一次
+- 📊 **多视图展示**: 周视图、月视图、按日期/工程师视图
+- ⚡ **手动控制**: 随时手动同步,可开启/关闭自动同步
+- 🎯 **任务筛选**: 支持优先级、状态等多维度筛选
+- 📈 **实时统计**: 动态统计不同优先级任务数量
+- 🔌 **API接口**: 完整的RESTful API供其他系统集成
+
+## 快速开始
+
+### 使用Docker部署(推荐)
+
+```bash
+# 1. 克隆项目
+git clone <repository_url> Task_feishu
+cd Task_feishu
+
+# 2. 配置环境变量
+cp .env.example .env
+nano .env  # 填写飞书凭证
+
+# 3. 一键部署
+chmod +x deploy.sh
+./deploy.sh
+
+# 4. 访问系统
+# 前端: http://localhost:8080
+# 后端: http://localhost:8000
+# API文档: http://localhost:8000/docs
+```
+
+### 手动部署
+
+详见 [快速部署指南](README_DEPLOY.md) 或 [详细部署文档](docs/DEPLOYMENT_GUIDE.md)
+
+## 文档索引
+
+📑 **[完整文档索引](DOCUMENTATION_INDEX.md)** - 查看所有文档和按场景查找指南
+
+**快速访问**:
+- 📖 [快速部署指南](README_DEPLOY.md) - 最快速的部署流程
+- 📚 [详细部署文档](docs/DEPLOYMENT_GUIDE.md) - 完整的部署步骤
+- 🎨 [功能说明文档](docs/FEATURES.md) - 系统功能详细介绍
+- 🔧 [API使用文档](docs/API_USAGE_GUIDE.md) - API接口详细说明
+- 📝 [更新日志](CHANGELOG.md) - 版本更新记录
+- 💻 [开发文档](CLAUDE.md) - 开发者指南
+
+## 技术栈
+
+**后端**: FastAPI (Python 3.9+) + SQLite/MySQL
+**前端**: React 18 + Tailwind CSS
+**部署**: Docker + Docker Compose
+
+---
+
+# Docker 部署详细说明
 
 本项目采用 Docker 进行容器化部署，使用 Docker Compose 进行编排。
 
