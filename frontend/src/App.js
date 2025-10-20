@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback, useState } from 'react';
+import React, { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import Header from './components/Header';
 import TimeFilterBar from './components/TimeFilterBar';
 import WeekView from './components/WeekView';
@@ -52,6 +52,17 @@ function App() {
     const rangeStart = currentRange?.start;
     const rangeEnd = currentRange?.end;
 
+    const rangeRef = useRef({ start: currentRange?.start || null, end: currentRange?.end || null });
+
+    useEffect(() => {
+        rangeRef.current = { start: rangeStart || null, end: rangeEnd || null };
+    }, [rangeStart, rangeEnd]);
+
+    const calculateNextSyncTime = useCallback(() => {
+        const now = new Date();
+        return new Date(now.getTime() + 60 * 60 * 1000);
+    }, []);
+
     useEffect(() => {
         if (!rangeStart || !rangeEnd) {
             return;
@@ -79,9 +90,10 @@ function App() {
                     text: `同步成功!已同步 ${data.records_synced} 条记录`,
                 });
                 // 同步成功后重新获取数据
-                if (rangeStart && rangeEnd) {
+                const { start, end } = rangeRef.current;
+                if (start && end) {
                     setTimeout(() => {
-                        fetchTasks(rangeStart, rangeEnd);
+                        fetchTasks(start, end);
                     }, 500);
                 }
             } else {
@@ -100,20 +112,14 @@ function App() {
             // 3秒后自动清除消息
             setTimeout(() => setSyncMessage(null), 3000);
         }
-    }, [rangeStart, rangeEnd, fetchTasks]);
+    }, [fetchTasks]);
 
     // 自动同步功能 - 页面打开时同步一次,然后每小时执行一次
     useEffect(() => {
         if (!autoSyncEnabled) {
+            setNextSyncTime(null);
             return;
         }
-
-        // 计算下次同步时间 (当前时间 + 1小时)
-        const calculateNextSyncTime = () => {
-            const now = new Date();
-            const next = new Date(now.getTime() + 60 * 60 * 1000); // 1小时后
-            return next;
-        };
 
         // 页面打开时立即执行一次同步
         console.log('[Auto Sync] Initial sync on page load...');
@@ -141,7 +147,7 @@ function App() {
             clearInterval(syncInterval);
             clearInterval(countdownInterval);
         };
-    }, [autoSyncEnabled, handleSync]);
+    }, [autoSyncEnabled, handleSync, calculateNextSyncTime]);
 
     const weekDays = useMemo(() => (
         WEEK_CONFIG.map(({ key, label, headerClassName }) => ({

@@ -25,8 +25,8 @@ COPY backend/ .
 # 创建目录用于存放前端静态文件
 RUN mkdir -p static db
 
-# 复制前端文件到后端的static目录
-COPY frontend/index.html ./static/
+# 注释掉:前端通过单独的容器提供,不需要复制到后端
+# COPY frontend/index.html ./static/
 
 # 复制启动脚本
 COPY start.sh /app/start.sh

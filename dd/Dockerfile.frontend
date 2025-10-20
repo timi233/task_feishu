@@ -10,11 +10,8 @@ COPY dd/nginx.frontend.conf /etc/nginx/nginx.conf
 # Remove default Nginx static assets
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy frontend files directly
-COPY frontend/ /usr/share/nginx/html/
-
-# Make sure index.html is in the correct location
-RUN mv /usr/share/nginx/html/index.html /usr/share/nginx/html/index.html 2>/dev/null || true
+# Copy built frontend files (from build directory)
+COPY frontend/build/ /usr/share/nginx/html/
 
 # Expose port 80
 EXPOSE 80

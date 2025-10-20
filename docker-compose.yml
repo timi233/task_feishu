@@ -36,9 +36,9 @@ services:
       # 挂载卷以使用宿主机上修改后的filter_config.json文件
       - ./backend/filter_config.json:/app/filter_config.json
 
-    # 健康检查(新增)
+    # 健康检查(使用python内置库,不依赖curl)
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 5s
       retries: 3

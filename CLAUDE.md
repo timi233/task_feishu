@@ -29,10 +29,15 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 # 手动同步飞书数据到数据库(需要先设置环境变量)
 python sync_feishu_to_db.py
 
+# 一次性同步(不启动定时任务)
+python sync_once.py
+
 # 数据库调试
 python check_db.py              # 查看数据库内容
 python check_filter_data.py     # 验证筛选器逻辑
 python check_week_data.py       # 检查本周数据
+python check_raw_db.py          # 检查feishu_records原始数据
+python check_cross_day_tasks.py # 验证跨天任务展开
 ```
 
 ### 前端开发
@@ -87,8 +92,11 @@ docker-compose -f docker-compose.mysql.yml up --build
 
 5. **API服务**
    - `main.py`: FastAPI应用,CORS已开启
-   - 核心端点: `GET /api/tasks?start_date=&end_date=&filter_name=`
-   - 响应模型: `TaskGroup`(按星期一到周日分组)
+   - 核心端点分为两类:
+     - **前端专用**(无需认证): `GET /api/tasks`, `GET /api/filters`, `POST /api/sync`
+     - **系统集成**(需要API Key): `GET /api/tasks/by-engineer`, `GET /api/tasks/by-date`, `GET /api/tasks/stats`, `GET /api/tasks/search`, `GET /api/engineers`
+   - 响应模型: `TaskGroup`(按星期一到周日分组) + `TaskListResponse`(扁平结构)
+   - 认证: `auth.py`提供API Key验证,`rate_limit.py`提供限流保护
 
 6. **同步脚本**
    - `sync_feishu_to_db.py`: 定时任务入口(默认60分钟),调用reader→processor→db保存
@@ -134,6 +142,19 @@ FEISHU_APP_SECRET=xxx          # 飞书应用密钥
 FEISHU_APP_TOKEN=xxx           # 多维表格App Token
 FEISHU_TABLE_ID=tblxxx         # 表格中的具体表ID
 ```
+
+### API认证配置(可选,生产环境推荐)
+```
+API_KEYS=admin-key-1,admin-key-2              # 管理员密钥(读写权限)
+READONLY_API_KEYS=readonly-key-1,readonly-key-2  # 只读密钥(供其他系统调用)
+API_RATE_LIMIT=100                            # 每分钟请求限制(默认100)
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080  # CORS允许的来源
+LOG_LEVEL=INFO                                # 日志级别(DEBUG/INFO/WARNING/ERROR)
+```
+
+**注意**:
+- 如果不配置`API_KEYS`和`READONLY_API_KEYS`,系统会使用默认开发密钥(不适合生产环境)
+- `/api/tasks`等前端调用的端点不需要认证,`/api/tasks/by-engineer`等供其他系统调用的端点需要`X-API-Key`头
 
 ### 字段映射配置
 在`process_feishu_data.py`顶部定义飞书字段名映射:
@@ -191,3 +212,56 @@ END_DATE_FIELD = "服务结束时间"
 - **Python**: PEP 8,4空格缩进,snake_case命名
 - **JavaScript**: ESLint + Prettier(react-scripts默认),camelCase文件名
 - **提交信息**: 使用Conventional Commits格式(`feat:`, `fix:`, `refactor:`等)
+
+## 系统集成指南
+
+### 使用API访问任务数据
+
+其他系统可通过以下端点访问任务数据(需要在请求头中提供`X-API-Key`):
+
+```bash
+# 获取某工程师本周任务
+curl -H "X-API-Key: your-readonly-key" \
+  "http://localhost:8000/api/tasks/by-engineer?engineer=张三&start_date=2025-10-13&end_date=2025-10-19"
+
+# 获取某天所有任务
+curl -H "X-API-Key: your-readonly-key" \
+  "http://localhost:8000/api/tasks/by-date?date=2025-10-15"
+
+# 获取统计数据
+curl -H "X-API-Key: your-readonly-key" \
+  "http://localhost:8000/api/tasks/stats?start_date=2025-10-13&end_date=2025-10-19"
+
+# 搜索任务
+curl -H "X-API-Key: your-readonly-key" \
+  "http://localhost:8000/api/tasks/search?keyword=阿里巴巴&limit=50"
+
+# 获取工程师列表
+curl -H "X-API-Key: your-readonly-key" \
+  "http://localhost:8000/api/engineers"
+```
+
+详细API文档可访问: `http://localhost:8000/docs`(Swagger UI)
+
+### 触发手动同步
+
+```bash
+# 前端用户点击"同步"按钮或其他系统触发
+curl -X POST -H "X-API-Key: your-readonly-key" \
+  "http://localhost:8000/api/sync"
+```
+
+## 性能考虑
+
+1. **数据库查询**: SQLite适合中小规模(<10万条任务),大规模建议切换到MySQL
+2. **筛选性能**: 当前在内存中筛选,任务量大时考虑改为SQL WHERE子句
+3. **定时同步**: 默认60分钟,可通过修改`sync_feishu_to_db.py`调整间隔
+4. **API限流**: 默认100次/分钟,生产环境可通过`API_RATE_LIMIT`环境变量调整
+
+## 故障排查清单
+
+1. **前端显示空白**: 检查后端是否启动(`curl http://localhost:8000/health`)
+2. **数据不更新**: 检查同步日志,验证飞书凭证是否过期
+3. **筛选器不生效**: 检查`filter_config.json`语法,验证`active_filter`设置
+4. **跨天任务显示异常**: 运行`python check_cross_day_tasks.py`验证展开逻辑
+5. **API认证失败**: 检查环境变量`API_KEYS`/`READONLY_API_KEYS`是否配置正确
