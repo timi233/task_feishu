@@ -1,0 +1,23 @@
+# Simple Dockerfile for frontend application
+# This approach directly copies the frontend files without complex build steps
+
+# Use Nginx as the base image
+FROM nginx:alpine
+
+# Copy the Nginx configuration file
+COPY dd/nginx.frontend.conf /etc/nginx/nginx.conf
+
+# Remove default Nginx static assets
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copy frontend files directly
+COPY frontend/ /usr/share/nginx/html/
+
+# Make sure index.html is in the correct location
+RUN mv /usr/share/nginx/html/index.html /usr/share/nginx/html/index.html 2>/dev/null || true
+
+# Expose port 80
+EXPOSE 80
+
+# Containers run nginx with global directives and daemon off
+ENTRYPOINT ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,27 @@
+# Multi-stage build for simple static site
+
+# Stage 1: Use a lightweight image to prepare static files if needed
+# In this case, we just need to copy the existing index.html
+# So we can skip this stage or use a very minimal one
+FROM alpine:latest AS builder
+
+# Create a basic HTML file for demonstration
+# In a real React project, you would build it here
+RUN mkdir -p /app
+RUN echo '<!DOCTYPE html><html><head><title>Task Frontend</title></head><body><div id="root"></div><script src="app.js"></script></body></html>' > /app/index.html
+RUN echo 'console.log("Simple frontend app loaded"); document.getElementById("root").innerHTML = "<h1>Tasks will be listed here</h1><p>This is a simple frontend that communicates with the backend via Nginx proxy.</p>";' > /app/app.js
+
+# Stage 2: Serve the application using Nginx
+FROM nginx:alpine
+
+# Copy the Nginx configuration file
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+
+# Remove default Nginx static assets
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copy static assets from builder stage
+COPY --from=builder /app /usr/share/nginx/html
+
+# Containers run nginx with global directives and daemon off
+ENTRYPOINT ["nginx", "-g", "daemon off;"]

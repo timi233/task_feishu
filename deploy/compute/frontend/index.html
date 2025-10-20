@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>派工系统</title>
+    <script src="https://cdn.tailwindcss.com/3.3.3"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f5f7fa;
+        }
+        
+        .header-gradient {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+        }
+        
+        .day-header {
+            transition: all 0.3s ease;
+        }
+        
+        .day-header:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-card {
+            transition: all 0.2s ease;
+        }
+        
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Loading spinner styles */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #2563eb;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* 优先级颜色 */
+        .priority-high {
+            background-color: #fecaca;
+            color: #b91c1c;
+        }
+
+        .priority-medium {
+            background-color: #ffedd5;
+            color: #ea580c;
+        }
+
+        .priority-low {
+            background-color: #bfdbfe;
+            color: #1d4ed8;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- 顶部标题区域 -->
+    <header class="header-gradient text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold">
+                        <i class="fas fa-tasks mr-3"></i>派工管理系统
+                    </h1>
+                    <p class="text-blue-100 mt-1">本周工作任务分配与进度跟踪</p>
+                </div>
+                <div class="text-blue-100">
+                    <span class="hidden md:inline-block">当前日期: </span>
+                    <span id="currentDate" class="font-medium"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主体内容区域 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 加载提示 -->
+        <div id="loadingIndicator" class="text-center">
+            <div class="spinner"></div>
+            <p>正在加载派工数据...</p>
+        </div>
+
+        <!-- 错误提示 -->
+        <div id="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative hidden" role="alert">
+            <strong class="font-bold">加载失败!</strong>
+            <span class="block sm:inline" id="errorText">无法获取派工数据。</span>
+        </div>
+
+        <!-- 登录提示 -->
+        <div id="loginPrompt" class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative hidden" role="alert">
+            <strong class="font-bold">需要登录!</strong>
+            <span class="block sm:inline">请先登录飞书以获取派工数据。</span>
+            <button id="loginButton" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                登录/刷新
+            </button>
+        </div>
+
+        <!-- 周任务概览 -->
+        <div id="taskContainer" class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8 hidden">
+            <!-- 周一 -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="day-header bg-blue-600 text-white px-4 py-3">
+                    <h2 class="font-bold text-lg flex items-center">
+                        <i class="fas fa-calendar-day mr-2"></i>周一
+                    </h2>
+                </div>
+                <div id="mondayTasks" class="p-4 space-y-3">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </div>
+            
+            <!-- 周二 -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="day-header bg-blue-700 text-white px-4 py-3">
+                    <h2 class="font-bold text-lg flex items-center">
+                        <i class="fas fa-calendar-day mr-2"></i>周二
+                    </h2>
+                </div>
+                <div id="tuesdayTasks" class="p-4 space-y-3">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </div>
+            
+            <!-- 周三 -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="day-header bg-blue-800 text-white px-4 py-3">
+                    <h2 class="font-bold text-lg flex items-center">
+                        <i class="fas fa-calendar-day mr-2"></i>周三
+                    </h2>
+                </div>
+                <div id="wednesdayTasks" class="p-4 space-y-3">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </div>
+            
+            <!-- 周四 -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="day-header bg-blue-900 text-white px-4 py-3">
+                    <h2 class="font-bold text-lg flex items-center">
+                        <i class="fas fa-calendar-day mr-2"></i>周四
+                    </h2>
+                </div>
+                <div id="thursdayTasks" class="p-4 space-y-3">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </div>
+            
+            <!-- 周五 -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="day-header bg-indigo-900 text-white px-4 py-3">
+                    <h2 class="font-bold text-lg flex items-center">
+                        <i class="fas fa-calendar-day mr-2"></i>周五
+                    </h2>
+                </div>
+                <div id="fridayTasks" class="p-4 space-y-3">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 统计信息 -->
+        <div id="statsContainer" class="bg-white rounded-lg shadow p-6 mb-8 hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-chart-pie mr-2 text-blue-600"></i>本周任务统计
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-exclamation-circle text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">非常紧急</p>
+                            <p id="veryUrgentCount" class="text-xl font-bold text-gray-800">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-orange-50 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <div class="bg-orange-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-exclamation-triangle text-orange-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">紧急</p>
+                            <p id="urgentCount" class="text-xl font-bold text-gray-800">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-red-50 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <div class="bg-red-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-flag text-red-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">重要</p>
+                            <p id="importantCount" class="text-xl font-bold text-gray-800">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-100 py-6 mt-8">
+        <div class="container mx-auto px-4 text-center text-gray-600 text-sm">
+            <p>派工管理系统</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- 配置部分 ---
+        // 后端服务的基础URL
+        // 在Docker容器中，后端和前端在同一个容器内，可以通过相对路径访问
+        // 在开发环境中，可以通过环境变量或直接修改此值来配置
+        const BACKEND_BASE_URL = ''; // 空字符串表示相对路径
+        // --- 配置结束 ---
+        
+        // 设置当前日期
+        const now = new Date();
+        const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('zh-CN', options);
+        
+        // 添加卡片悬停效果 (对于动态添加的元素, 事件委托更有效)
+        document.addEventListener('mouseover', function(e) {
+            if (e.target.closest('.task-card')) {
+                e.target.closest('.task-card').classList.add('shadow-md');
+            }
+        });
+        
+        document.addEventListener('mouseout', function(e) {
+            if (e.target.closest('.task-card')) {
+                e.target.closest('.task-card').classList.remove('shadow-md');
+            }
+        });
+
+        // 登录按钮事件
+        document.getElementById('loginButton').addEventListener('click', function() {
+            // 直接调用 fetchTasks
+            fetchTasks();
+        });
+
+        /**
+         * 获取任务数据
+         */
+        async function fetchTasks() {
+            console.log("开始获取任务数据...");
+            // 隐藏登录提示，显示加载指示器
+            document.getElementById('loginPrompt').classList.add('hidden');
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            document.getElementById('errorMessage').classList.add('hidden'); // 隐藏之前的错误
+
+            try {
+                console.log(`正在请求: ${BACKEND_BASE_URL}/api/tasks`);
+                const response = await fetch(`${BACKEND_BASE_URL}/api/tasks`);
+                console.log("收到响应:", response);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const taskData = await response.json();
+                console.log("解析后的任务数据:", taskData);
+                renderTasks(taskData);
+                updateStats(taskData);
+                
+                // 隐藏加载指示器，显示任务和统计
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('taskContainer').classList.remove('hidden');
+                document.getElementById('statsContainer').classList.remove('hidden');
+                console.log("数据渲染完成");
+                
+            } catch (error) {
+                console.error('获取任务数据时出错:', error);
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('errorMessage').classList.remove('hidden');
+                document.getElementById('errorText').textContent = error.message;
+            }
+        }
+
+        /**
+         * 渲染任务到页面
+         * @param {Object} taskData - 从后端获取的任务数据
+         */
+        function renderTasks(taskData) {
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+            
+            days.forEach(day => {
+                const container = document.getElementById(`${day}Tasks`);
+                container.innerHTML = ''; // 清空现有内容
+                
+                const tasks = taskData[day] || [];
+                if (tasks.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-2">暂无任务</p>';
+                    return;
+                }
+                
+                tasks.forEach(task => {
+                    // 确定优先级标签的类
+                    let priorityClass = 'priority-low'; // 默认重要
+                    if (task.status === '紧急') {
+                        priorityClass = 'priority-medium';
+                    } else if (task.status === '非常紧急') {
+                        priorityClass = 'priority-high';
+                    }
+                    
+                    const taskCard = document.createElement('div');
+                    taskCard.className = 'task-card bg-white border border-gray-200 rounded p-3';
+                    
+                    // Determine status badge class
+                    let statusClass = 'bg-gray-100 text-gray-800'; // Default for unknown status
+                    if (task.status === '进行中') {
+                        statusClass = 'bg-blue-100 text-blue-800';
+                    } else if (task.status === '已结束') {
+                        statusClass = 'bg-green-100 text-green-800';
+                    } else if (task.status === '已取消') {
+                        statusClass = 'bg-red-100 text-red-800';
+                    } else if (task.status === '已关闭') {
+                        statusClass = 'bg-gray-100 text-gray-800';
+                    }
+                    
+                    taskCard.innerHTML = `
+                        <h3 class="font-medium text-gray-800">${task.task_name}</h3>
+                        <div class="flex items-center mt-2 text-sm">
+                            <span class="text-gray-500 mr-3"><i class="fas fa-user mr-1"></i> ${task.assignee}</span>
+                            <span class="${priorityClass} px-2 py-1 rounded-full text-xs mr-2">${task.priority}</span>
+                            <span class="${statusClass} px-2 py-1 rounded-full text-xs">${task.status}</span>
+                        </div>
+                    `;
+                    container.appendChild(taskCard);
+                });
+            });
+        }
+
+        /**
+         * 更新统计信息
+         * @param {Object} taskData - 从后端获取的任务数据
+         */
+        function updateStats(taskData) {
+            let veryUrgent = 0;
+            let urgent = 0;
+            let important = 0;
+
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+            days.forEach(day => {
+                const tasks = taskData[day] || [];
+                tasks.forEach(task => {
+                    if (task.priority === '非常紧急') {
+                        veryUrgent++;
+                    } else if (task.priority === '紧急') {
+                        urgent++;
+                    } else if (task.priority === '重要') {
+                        important++;
+                    }
+                });
+            });
+
+            document.getElementById('veryUrgentCount').textContent = veryUrgent;
+            document.getElementById('urgentCount').textContent = urgent;
+            document.getElementById('importantCount').textContent = important;
+        }
+
+        // 页面加载完成后获取任务数据
+        window.onload = fetchTasks;
+    </script>
+</body>
+</html>

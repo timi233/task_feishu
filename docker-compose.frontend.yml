@@ -1,0 +1,17 @@
+# task_feishu/docker-compose.frontend.yml
+
+version: '3.3'
+
+services:
+  # Frontend service with Nginx
+  frontend:
+    build:
+      context: .
+      dockerfile: dd/Dockerfile.frontend
+    ports:
+      - "80:80"  # Expose Nginx on port 80
+    environment:
+      # Backend API URL - change this to your actual backend URL
+      - REACT_APP_BACKEND_URL=http://your-backend-server.com:8000
+    # 重启策略
+    restart: unless-stopped

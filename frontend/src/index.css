@@ -1,0 +1,145 @@
+/* Tailwind loaded via CDN in index.html */
+
+body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background-color: #f5f7fa;
+}
+
+.header-gradient {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+}
+
+.day-header {
+    transition: all 0.3s ease;
+}
+
+.day-header:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.task-card {
+    transition: all 0.2s ease;
+}
+
+.task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #2563eb;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.hidden {
+    display: none;
+}
+
+.priority-high {
+    background-color: #fecaca;
+    color: #b91c1c;
+}
+
+.priority-medium {
+    background-color: #ffedd5;
+    color: #ea580c;
+}
+
+.priority-low {
+    background-color: #bfdbfe;
+    color: #1d4ed8;
+}
+
+.view-btn {
+    background-color: #e5e7eb;
+    color: #4b5563;
+}
+
+.view-btn.active {
+    background-color: #2563eb;
+    color: #ffffff;
+}
+
+.view-btn:hover:not(.active) {
+    background-color: #d1d5db;
+}
+
+.month-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background-color: #e5e7eb;
+    border: 1px solid #e5e7eb;
+}
+
+.calendar-day {
+    background-color: #ffffff;
+    min-height: 120px;
+    padding: 8px;
+}
+
+.calendar-day-header {
+    font-weight: bold;
+    text-align: center;
+    padding: 8px;
+    background-color: #f3f4f6;
+}
+
+.calendar-day.other-month {
+    background-color: #f9fafb;
+    opacity: 0.6;
+}
+
+.calendar-day.today {
+    background-color: #dbeafe;
+}
+
+.day-number {
+    font-size: 14px;
+    font-weight: bold;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.calendar-day.other-month .day-number {
+    color: #9ca3af;
+}
+
+.mini-task {
+    font-size: 11px;
+    padding: 2px 4px;
+    margin-bottom: 2px;
+    border-left: 3px solid;
+    background-color: #f9fafb;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mini-task:hover {
+    transform: translateX(2px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.mini-task.priority-high {
+    border-left-color: #dc2626;
+}
+
+.mini-task.priority-medium {
+    border-left-color: #ea580c;
+}
+
+.mini-task.priority-low {
+    border-left-color: #2563eb;
+}
