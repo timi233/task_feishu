@@ -1,0 +1,34 @@
+# MySQL database configuration for task_feishu application
+
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mysql-task-feishu
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 1qaz@wsx
+      MYSQL_DATABASE: feishu_task_db
+      MYSQL_USER: feishu_user
+      MYSQL_PASSWORD: feishu_password
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql-conf:/etc/mysql/conf.d
+      - ./mysql-log:/var/log/mysql
+    networks:
+      - mysql-network
+    command: --default-authentication-plugin=mysql_native_password
+
+# Define volumes for data persistence
+volumes:
+  mysql-data:
+    driver: local
+
+# Define networks for container communication
+networks:
+  mysql-network:
+    driver: bridge

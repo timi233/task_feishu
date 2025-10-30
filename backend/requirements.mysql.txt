@@ -1,0 +1,7 @@
+fastapi>=0.95.0,<1.0.0
+uvicorn[standard]>=0.21.0,<1.0.0
+requests>=2.26.0,<3.0.0
+schedule>=1.2.0,<2.0.0
+sqlalchemy>=2.0.0,<3.0.0
+pymysql>=1.0.0,<2.0.0
+cryptography>=3.4.0,<4.0.0

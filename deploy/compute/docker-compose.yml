@@ -1,0 +1,26 @@
+# task_feishu application deployment configuration for compute node
+
+services:
+  # Backend service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.mysql
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # MySQL 数据库配置
+      - DB_HOST=192.168.101.13
+      - DB_PORT=3306
+      - DB_USER=feishu_user
+      - DB_PASSWORD=feishu_password
+      - DB_NAME=feishu_task_db
+      # 其他环境变量
+      - BACKEND_PORT=8000
+    volumes:
+      # 挂载卷以使用宿主机上修改后的filter_config.json文件
+      - ./filter_config.json:/app/filter_config.json
+    # 重启策略
+    restart: unless-stopped

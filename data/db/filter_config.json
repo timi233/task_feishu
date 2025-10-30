@@ -1,0 +1,54 @@
+{
+  "filters": {
+    "default": {
+      "enabled": true,
+      "conditions": [
+        {
+          "field": "status",
+          "operator": "not_in",
+          "value": ["已取消", "已关闭"]
+        },
+        {
+          "field": "assignee",
+          "operator": "not_empty"
+        }
+      ]
+    },
+    "by_priority": {
+      "enabled": false,
+      "conditions": [
+        {
+          "field": "status",
+          "operator": "in",
+          "value": ["紧急", "高优先级"]
+        }
+      ]
+    },
+    "by_engineer": {
+      "enabled": false,
+      "conditions": [
+        {
+          "field": "assignee",
+          "operator": "equals",
+          "value": "张三"
+        }
+      ]
+    },
+    "application_status_approved_this_week": {
+      "enabled": true,
+      "conditions": [
+        {
+          "field": "application_status",
+          "operator": "equals",
+          "value": "已通过"
+        },
+        {
+          "field": "date",
+          "operator": "this_week"
+        }
+      ],
+      "logic": "and"
+    }
+  },
+  "active_filter": "default"
+}

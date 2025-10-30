@@ -1,0 +1,41 @@
+# task_feishu/docker-compose.yml
+
+version: '3.8'
+
+services:
+  # Backend service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"  # Expose backend API directly for testing, can be removed later
+    environment:
+      # 飞书应用配置 (请在部署时替换为真实的值)
+      - FEISHU_APP_ID=${FEISHU_APP_ID}
+      - FEISHU_APP_SECRET=${FEISHU_APP_SECRET}
+      - FEISHU_APP_TOKEN=${FEISHU_APP_TOKEN}
+      - FEISHU_TABLE_ID=${FEISHU_TABLE_ID}
+      # 其他环境变量
+      - BACKEND_PORT=8000
+    volumes:
+      # 挂载卷以持久化SQLite数据库文件
+      # 将主机的 ./data 目录挂载到容器的 /app 目录
+      # 这样数据库文件 tasks.db 就会保存在主机的 ./data 目录中
+      - ./data/db:/app/db
+      # 挂载卷以使用宿主机上修改后的filter_config.json文件
+      - ./backend/filter_config.json:/app/filter_config.json
+    # 重启策略
+    restart: unless-stopped
+
+  # Frontend service with Nginx
+  frontend:
+    build:
+      context: .
+      dockerfile: dd/Dockerfile.frontend
+    ports:
+      - "8080:80"  # Expose Nginx on port 8080 to avoid conflict with host's port 80
+    depends_on:
+      - app
+    # 重启策略
+    restart: unless-stopped
