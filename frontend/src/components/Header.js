@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import LoginButton from './LoginButton';
 
 /**
  * Display the dashboard header with title, subtitle, and the current date.
@@ -11,6 +12,7 @@ import { useMemo } from 'react';
  * @param {boolean} [props.autoSyncEnabled] Whether auto sync is enabled.
  * @param {Function} [props.onToggleAutoSync] Callback to toggle auto sync.
  * @param {Date} [props.nextSyncTime] Next scheduled sync time.
+ * @param {Function} [props.onCreateDispatch] Callback function when create dispatch button is clicked.
  */
 export default function Header({
     title = '派工管理系统',
@@ -21,6 +23,8 @@ export default function Header({
     autoSyncEnabled = false,
     onToggleAutoSync,
     nextSyncTime,
+    onCreateDispatch,
+    onManageDispatches,
 }) {
     const formattedDate = useMemo(() => {
         const baseDate = date ? new Date(date) : new Date();
@@ -63,6 +67,35 @@ export default function Header({
                         <p className="text-blue-100 mt-1">{subtitle}</p>
                     </div>
                     <div className="flex items-center gap-3">
+                        {/* 登录按钮 */}
+                        <LoginButton />
+
+                        {/* 新建派工按钮 */}
+                        {onCreateDispatch && (
+                            <button
+                                type="button"
+                                onClick={onCreateDispatch}
+                                className="px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 bg-green-500 hover:bg-green-600 active:bg-green-700"
+                                title="新建派工申请"
+                            >
+                                <i className="fas fa-plus" />
+                                <span className="hidden sm:inline">新建派工</span>
+                            </button>
+                        )}
+
+                        {/* 工单管理按钮 */}
+                        {onManageDispatches && (
+                            <button
+                                type="button"
+                                onClick={onManageDispatches}
+                                className="px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 bg-purple-500 hover:bg-purple-600 active:bg-purple-700"
+                                title="工单管理"
+                            >
+                                <i className="fas fa-list-alt" />
+                                <span className="hidden sm:inline">工单管理</span>
+                            </button>
+                        )}
+
                         {onSync && (
                             <>
                                 {/* 手动同步按钮 */}

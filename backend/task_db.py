@@ -5,10 +5,7 @@ from datetime import datetime, timedelta
 import logging
 from contextlib import contextmanager
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# 日志由main.py统一配置
 logger = logging.getLogger(__name__)
 
 # 数据库文件路径
@@ -64,7 +61,26 @@ def init_db():
         # 创建索引
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_weekday ON tasks (weekday)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks (date)")
-    logger.info("Database initialized. Table 'tasks' is ready.")
+
+        # 创建工程师表 (存储从飞书同步的人员信息)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS engineers (
+                user_id TEXT PRIMARY KEY,          -- 飞书user_id
+                name TEXT NOT NULL,                 -- 工程师姓名
+                department_ids TEXT,                -- 部门ID列表(JSON数组)
+                mobile TEXT,                        -- 手机号
+                email TEXT,                         -- 邮箱
+                status INTEGER DEFAULT 1,           -- 状态: 1=在职, 0=离职
+                synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id)
+            )
+        """)
+
+        # 创建工程师表索引
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_engineers_name ON engineers (name)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_engineers_status ON engineers (status)")
+
+    logger.info("Database initialized. Tables 'tasks' and 'engineers' are ready.")
 
 
 def get_week_range(date=None, week_start="sunday") -> tuple[str, str]:
@@ -138,23 +154,27 @@ def get_current_week_dates() -> tuple[str, str]:
 
 
 def save_processed_tasks_to_db(processed_tasks: Dict[str, List[Dict[str, Any]]]):
-    """将处理后的任务数据保存到数据库 (用于API查询)"""
+    """将处理后的任务数据保存到数据库 (使用UPSERT避免并发问题)
+
+    🔒 安全修复: 使用INSERT OR REPLACE替代DELETE+INSERT，避免并发数据丢失
+    """
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        conn.execute("BEGIN TRANSACTION")
 
-        # 先清空现有数据
-        cursor.execute("DELETE FROM tasks")
-        logger.info("Cleared existing processed tasks from database.")
+        # ❌ 移除全量删除 - 避免并发问题
+        # cursor.execute("DELETE FROM tasks")
 
-        # 插入新数据
-        insert_count = 0
+        # ✓ 使用UPSERT逻辑: INSERT OR REPLACE
+        # 依赖唯一约束 UNIQUE(record_id, date)
+        upsert_count = 0
         for weekday, tasks in processed_tasks.items():
             for task in tasks:
                 cursor.execute("""
-                    INSERT OR REPLACE INTO tasks 
-                    (record_id, task_name, assignee, status, date, start_date, end_date, weekday, priority, application_status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO tasks
+                    (record_id, task_name, assignee, status, date, start_date, end_date,
+                     weekday, priority, application_status, approval_instance_code,
+                     approval_status, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """, (
                     task["record_id"],
                     task["task_name"],
@@ -165,11 +185,13 @@ def save_processed_tasks_to_db(processed_tasks: Dict[str, List[Dict[str, Any]]])
                     task.get("end_date"),
                     weekday,
                     task.get("priority", ""),
-                    task.get("application_status", "")
+                    task.get("application_status", ""),
+                    task.get("approval_instance_code"),
+                    task.get("approval_status")
                 ))
-                insert_count += 1
+                upsert_count += 1
 
-        logger.info("Successfully saved %d processed tasks to database.", insert_count)
+        logger.info("Successfully upserted %d processed tasks to database.", upsert_count)
 
 
 def get_tasks_from_db(start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict[str, List[Dict[str, Any]]]:
@@ -289,3 +311,92 @@ def get_tasks_by_record_id(record_id: str) -> List[Dict[str, Any]]:
 
     logger.debug("Fetched %d tasks for record_id %s", len(tasks), record_id)
     return tasks
+
+
+# ===== 工程师数据管理函数 =====
+
+def save_engineers_to_db(engineers: List[Dict[str, Any]]) -> int:
+    """
+    保存工程师列表到数据库 (使用REPLACE策略更新)
+
+    Args:
+        engineers: 工程师列表,每个元素包含 user_id, name, department_ids, mobile, email, status
+
+    Returns:
+        int: 成功保存的工程师数量
+    """
+    if not engineers:
+        logger.warning("No engineers to save")
+        return 0
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        saved_count = 0
+        for engineer in engineers:
+            try:
+                # 使用REPLACE策略: 如果user_id已存在则更新,否则插入
+                cursor.execute("""
+                    REPLACE INTO engineers (user_id, name, department_ids, mobile, email, status, synced_at)
+                    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """, (
+                    engineer.get("user_id"),
+                    engineer.get("name"),
+                    engineer.get("department_ids"),  # JSON字符串
+                    engineer.get("mobile"),
+                    engineer.get("email"),
+                    engineer.get("status", 1)  # 默认在职
+                ))
+                saved_count += 1
+            except Exception as e:
+                logger.error(f"Failed to save engineer {engineer.get('name', 'unknown')}: {e}")
+                continue
+
+    logger.info(f"Successfully saved {saved_count}/{len(engineers)} engineers to database")
+    return saved_count
+
+
+def get_engineers_from_db(status: Optional[int] = 1) -> List[Dict[str, Any]]:
+    """
+    从数据库获取工程师列表
+
+    Args:
+        status: 筛选状态 (1=在职, 0=离职, None=全部)
+
+    Returns:
+        List[Dict]: 工程师列表,每个元素包含 user_id, name, department_ids, mobile, email, status
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        if status is not None:
+            cursor.execute("""
+                SELECT user_id, name, department_ids, mobile, email, status, synced_at
+                FROM engineers
+                WHERE status = ?
+                ORDER BY name
+            """, (status,))
+        else:
+            cursor.execute("""
+                SELECT user_id, name, department_ids, mobile, email, status, synced_at
+                FROM engineers
+                ORDER BY name
+            """)
+
+        rows = cursor.fetchall()
+
+    engineers = [
+        {
+            "user_id": row["user_id"],
+            "name": row["name"],
+            "department_ids": row["department_ids"],
+            "mobile": row["mobile"],
+            "email": row["email"],
+            "status": row["status"],
+            "synced_at": row["synced_at"]
+        }
+        for row in rows
+    ]
+
+    logger.debug(f"Fetched {len(engineers)} engineers from database (status={status})")
+    return engineers

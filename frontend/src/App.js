@@ -7,6 +7,8 @@ import MonthView from './components/MonthView';
 import StatsPanel from './components/StatsPanel';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
+import CreateDispatchModal from './components/CreateDispatchModal';
+import DispatchManagementPanel from './components/DispatchManagementPanel';
 import useTasks from './hooks/useTasks';
 import useTimeFilter from './hooks/useTimeFilter';
 import { formatDate } from './utils/dateUtils';
@@ -48,6 +50,10 @@ function App() {
     });
     const [nextSyncTime, setNextSyncTime] = useState(null);
 
+    // Dispatch modal state
+    const [showCreateDispatchModal, setShowCreateDispatchModal] = useState(false);
+    const [showDispatchManagementPanel, setShowDispatchManagementPanel] = useState(false);
+
     const currentRange = periodDisplay?.range || periodDisplay?.dateRange;
     const rangeStart = currentRange?.start;
     const rangeEnd = currentRange?.end;
@@ -76,6 +82,30 @@ function App() {
         }
         fetchTasks(rangeStart, rangeEnd);
     }, [rangeStart, rangeEnd, fetchTasks]);
+
+    const handleCreateDispatch = useCallback(() => {
+        setShowCreateDispatchModal(true);
+    }, []);
+
+    const handleCloseDispatchModal = useCallback(() => {
+        setShowCreateDispatchModal(false);
+    }, []);
+
+    const handleDispatchCreated = useCallback(() => {
+        setShowCreateDispatchModal(false);
+        // 刷新任务列表
+        if (rangeStart && rangeEnd) {
+            fetchTasks(rangeStart, rangeEnd);
+        }
+    }, [rangeStart, rangeEnd, fetchTasks]);
+
+    const handleManageDispatches = useCallback(() => {
+        setShowDispatchManagementPanel(true);
+    }, []);
+
+    const handleCloseManagementPanel = useCallback(() => {
+        setShowDispatchManagementPanel(false);
+    }, []);
 
     const handleSync = useCallback(async () => {
         setSyncing(true);
@@ -250,6 +280,8 @@ function App() {
                 autoSyncEnabled={autoSyncEnabled}
                 onToggleAutoSync={handleToggleAutoSync}
                 nextSyncTime={nextSyncTime}
+                onCreateDispatch={handleCreateDispatch}
+                onManageDispatches={handleManageDispatches}
             />
 
             {/* 同步消息提示 */}
@@ -359,6 +391,19 @@ function App() {
                     <p>派工管理系统</p>
                 </div>
             </footer>
+
+            {/* 新建派工模态框 */}
+            <CreateDispatchModal
+                isOpen={showCreateDispatchModal}
+                onClose={handleCloseDispatchModal}
+                onSuccess={handleDispatchCreated}
+            />
+
+            {/* 工单管理面板 */}
+            <DispatchManagementPanel
+                isOpen={showDispatchManagementPanel}
+                onClose={handleCloseManagementPanel}
+            />
         </div>
     );
 }

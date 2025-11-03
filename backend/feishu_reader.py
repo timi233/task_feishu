@@ -4,10 +4,7 @@ import time
 from typing import Dict, List, Any, Optional
 import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# 日志由main.py统一配置
 logger = logging.getLogger(__name__)
 
 class FeishuBitableReader:

@@ -4,10 +4,7 @@ from typing import Dict, List, Any
 import logging
 from read_feishu_data import FeishuBitableReader
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# 日志由main.py统一配置
 logger = logging.getLogger(__name__)
 
 # --- 配置部分 (需要根据你的飞书表格字段进行修改) ---
@@ -17,14 +14,194 @@ TASK_CONTENT_FIELD = "工作内容"  # 工作内容字段
 ASSIGNEE_FIELD = "售后工程师"  # 负责人字段
 PRIORITY_FIELD = "优先级"  # 优先级字段
 APPLICATION_STATUS_FIELD = "申请状态"  # 申请状态字段
+# 审批相关字段
+APPROVAL_INSTANCE_FIELD = "审批实例ID"
+APPROVAL_STATUS_FIELD = "审批状态"
 # 日期字段 (开始时间和结束时间)
 START_DATE_FIELD = "服务开始时间"  # 开始日期字段 (时间戳)
 END_DATE_FIELD = "服务结束时间"    # 结束日期字段 (时间戳)
 # --- 配置结束 ---
 
 
+# ========== 辅助函数 (P2-8: 简化日期处理逻辑) ==========
+
+def parse_timestamp(ts: Any) -> datetime | None:
+    """
+    解析毫秒时间戳为datetime对象
+
+    Args:
+        ts: 时间戳（毫秒），可能是int/float/None
+
+    Returns:
+        datetime对象，失败返回None
+    """
+    if ts is None:
+        return None
+
+    if not isinstance(ts, (int, float)):
+        logger.warning(f"Invalid timestamp type: {type(ts)}, value: {ts}")
+        return None
+
+    try:
+        return datetime.fromtimestamp(ts / 1000.0)
+    except (ValueError, OSError) as e:
+        logger.warning(f"Invalid timestamp value: {ts}, error: {e}")
+        return None
+
+
+def expand_date_range(start: datetime | None, end: datetime | None) -> List[str]:
+    """
+    展开日期范围为日期列表
+
+    Args:
+        start: 开始日期
+        end: 结束日期
+
+    Returns:
+        日期字符串列表 (YYYY-MM-DD格式)
+    """
+    if not start or not end:
+        return []
+
+    if start > end:
+        logger.warning(f"Start date {start} is after end date {end}, swapping")
+        start, end = end, start
+
+    dates = []
+    current = start
+    while current <= end:
+        dates.append(current.strftime("%Y-%m-%d"))
+        current += timedelta(days=1)
+
+    return dates
+
+
+def get_weekday_key(date_str: str) -> str:
+    """
+    获取日期对应的星期key
+
+    Args:
+        date_str: 日期字符串 (YYYY-MM-DD)
+
+    Returns:
+        weekday key: monday/tuesday/.../weekend/unknown_date
+    """
+    weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+
+    try:
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        weekday_index = date_obj.weekday()  # Monday=0, Sunday=6
+
+        if 0 <= weekday_index <= 4:
+            return weekdays[weekday_index]
+        else:
+            return "weekend"
+    except ValueError as e:
+        logger.warning(f"Invalid date format: {date_str}, error: {e}")
+        return "unknown_date"
+
+
+def extract_assignee(assignee_field: Any) -> str:
+    """
+    提取负责人姓名
+
+    Args:
+        assignee_field: 负责人字段（可能是列表/字典/None）
+
+    Returns:
+        负责人姓名，多个用逗号分隔
+    """
+    if isinstance(assignee_field, list):
+        names = [user.get("name") for user in assignee_field if isinstance(user, dict) and "name" in user]
+        return ", ".join(names) if names else "未知负责人"
+
+    if isinstance(assignee_field, dict) and "name" in assignee_field:
+        return assignee_field["name"]
+
+    return "未知负责人"
+
+
+def map_application_status(application_status: str, priority: str) -> str:
+    """
+    将申请状态转换为展示状态
+
+    Args:
+        application_status: 申请状态（审批中/已通过等）
+        priority: 优先级（作为回退）
+
+    Returns:
+        展示状态
+    """
+    if application_status == "审批中":
+        return "进行中"
+    elif application_status == "已通过":
+        return "已结束"
+    else:
+        return priority  # 使用优先级作为默认状态
+
+
+def create_task_item(
+    record_id: str,
+    fields: Dict[str, Any],
+    date: str,
+    start_date: str,
+    end_date: str
+) -> Dict[str, Any]:
+    """
+    创建单个任务项
+
+    Args:
+        record_id: 记录ID
+        fields: 飞书字段数据
+        date: 任务展示日期 (YYYY-MM-DD)
+        start_date: 任务实际开始日期
+        end_date: 任务实际结束日期
+
+    Returns:
+        任务字典
+    """
+    # 提取字段
+    customer_name = fields.get(CUSTOMER_NAME_FIELD, "")
+    task_content = fields.get(TASK_CONTENT_FIELD, "")
+    task_name = f"{customer_name} {task_content}".strip()
+
+    # 提取负责人
+    assignee = extract_assignee(fields.get(ASSIGNEE_FIELD))
+
+    # 提取状态
+    priority = fields.get(PRIORITY_FIELD, "未知优先级")
+    application_status = fields.get(APPLICATION_STATUS_FIELD, "")
+    status = map_application_status(application_status, priority)
+
+    # 审批相关
+    approval_instance_code = fields.get(APPROVAL_INSTANCE_FIELD)
+    approval_status = fields.get(APPROVAL_STATUS_FIELD)
+
+    # 获取星期key
+    weekday = get_weekday_key(date) if date else "unknown_date"
+
+    return {
+        "record_id": record_id,
+        "task_name": task_name,
+        "assignee": assignee,
+        "status": status,
+        "priority": priority,
+        "application_status": application_status,
+        "date": date,
+        "start_date": start_date,
+        "end_date": end_date,
+        "weekday": weekday,
+        "approval_instance_code": approval_instance_code,
+        "approval_status": approval_status
+    }
+
+
+# ========== 旧版转换函数（保留向后兼容） ==========
 def convert_timestamp_to_date(timestamp_ms: int) -> str:
-    """将毫秒级时间戳转换为 YYYY-MM-DD 格式的日期字符串"""
+    """将毫秒级时间戳转换为 YYYY-MM-DD 格式的日期字符串
+
+    ⚠️ 已废弃，请使用 parse_timestamp() 函数
+    """
     try:
         dt = datetime.fromtimestamp(timestamp_ms / 1000.0)
         return dt.strftime("%Y-%m-%d")
@@ -38,8 +215,17 @@ def convert_timestamp_to_date(timestamp_ms: int) -> str:
 
 def process_feishu_records(records: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
     """
-    将原始飞书记录处理并转换为前端所需的格式（按星期一分组）
+    将原始飞书记录处理并转换为前端所需的格式（按星期分组）
+
+    🔧 P2-8: 简化版本，使用辅助函数提高可读性
+
     对于跨天任务，会在每个涵盖的日期都生成一条记录
+
+    Args:
+        records: 飞书原始记录列表
+
+    Returns:
+        按星期分组的任务字典
     """
     task_groups = {
         "monday": [],
@@ -47,166 +233,62 @@ def process_feishu_records(records: List[Dict[str, Any]]) -> Dict[str, List[Dict
         "wednesday": [],
         "thursday": [],
         "friday": [],
-        "weekend": [],  # 可选：处理周末数据
-        "unknown_date": []  # 可选：处理日期解析失败的数据
+        "weekend": [],
+        "unknown_date": []
     }
-
-    # 星期映射
-    weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
 
     for item in records:
         record_id = item.get("record_id", "")
         fields = item.get("fields", {})
 
-        # 1. 提取任务名称: 客户公司名称 + 工作内容
-        customer_name = fields.get(CUSTOMER_NAME_FIELD, "")
-        task_content = fields.get(TASK_CONTENT_FIELD, "")
-        task_name = f"{customer_name} {task_content}".strip()
+        # 1. 解析日期（使用新的辅助函数）
+        start_dt = parse_timestamp(fields.get(START_DATE_FIELD))
+        end_dt = parse_timestamp(fields.get(END_DATE_FIELD))
 
-        # 2. 提取负责人 (售后工程师)
-        # 假设是一个用户列表，提取所有用户的名字
-        assignee = "未知负责人"
-        assignee_obj = fields.get(ASSIGNEE_FIELD, [])
-        if isinstance(assignee_obj, list) and len(assignee_obj) > 0:
-            assignee_names = []
-            for user in assignee_obj:
-                if isinstance(user, dict) and "name" in user:
-                    assignee_names.append(user["name"])
-            if assignee_names:
-                assignee = ", ".join(assignee_names)  # 用逗号分隔多个负责人
-        elif isinstance(assignee_obj, dict) and "name" in assignee_obj:
-            # 如果不是列表而是单个对象
-            assignee = assignee_obj["name"]
+        # 2. 如果没有有效日期，添加到unknown_date组
+        if not start_dt or not end_dt:
+            start_date_str = start_dt.strftime("%Y-%m-%d") if start_dt else ""
+            end_date_str = end_dt.strftime("%Y-%m-%d") if end_dt else ""
 
-        # 3. 提取状态 (现在是优先级)
-        priority = fields.get(PRIORITY_FIELD, "未知优先级")
-        
-        # 4. 提取申请状态并转换为展示状态
-        application_status = fields.get(APPLICATION_STATUS_FIELD, "")
-        # 根据申请状态转换为展示状态
-        if application_status == "审批中":
-            status = "进行中"
-        elif application_status == "已通过":
-            status = "已结束"
-        else:
-            # 如果没有申请状态或不是指定的值，则使用优先级作为默认状态
-            status = priority
-
-        # 4. 提取并转换开始和结束日期
-        # 优先使用 "服务开始时间" 和 "服务结束时间"
-        # 如果这两个字段都为空，则跳过这条记录
-        start_timestamp = fields.get(START_DATE_FIELD)
-        end_timestamp = fields.get(END_DATE_FIELD)
-        
-        # 如果主字段为空，不使用带1的备选字段
-        # 直接跳过这条记录
-        if start_timestamp is None and end_timestamp is None:
-            # 添加到 unknown_date 组，因为没有有效日期
-            task_item = {
-                "record_id": record_id,
-                "task_name": task_name,
-                "assignee": assignee,
-                "status": status,
-                "date": "",  # 日期为空
-                "start_date": "",
-                "end_date": ""
-            }
+            task_item = create_task_item(
+                record_id=record_id,
+                fields=fields,
+                date="",
+                start_date=start_date_str,
+                end_date=end_date_str
+            )
             task_groups["unknown_date"].append(task_item)
-            continue # 跳过后续处理
-            
-        # 如果只有一个字段有值，也视为无效，跳过
-        # (根据业务需求，你也可以选择只使用有的那个字段)
-        # 这里我们选择跳过
-        if start_timestamp is None or end_timestamp is None:
-            # 添加到 unknown_date 组
-            task_item = {
-                "record_id": record_id,
-                "task_name": task_name,
-                "assignee": assignee,
-                "status": status,
-                "date": "",  # 日期为空
-                "start_date": "",
-                "end_date": ""
-            }
+            continue
+
+        # 3. 展开日期范围（使用新的辅助函数）
+        start_date_str = start_dt.strftime("%Y-%m-%d")
+        end_date_str = end_dt.strftime("%Y-%m-%d")
+        dates = expand_date_range(start_dt, end_dt)
+
+        if not dates:
+            # 展开失败，添加到unknown_date
+            task_item = create_task_item(
+                record_id=record_id,
+                fields=fields,
+                date="",
+                start_date=start_date_str,
+                end_date=end_date_str
+            )
             task_groups["unknown_date"].append(task_item)
-            continue # 跳过后续处理
-        
-        start_date_str = ""
-        end_date_str = ""
-        
-        if isinstance(start_timestamp, (int, float)):
-            start_date_str = convert_timestamp_to_date(int(start_timestamp))
-        if isinstance(end_timestamp, (int, float)):
-            end_date_str = convert_timestamp_to_date(int(end_timestamp))
+            continue
 
-        # 5. 为每个涵盖的日期生成任务记录
-        # 如果只有开始日期或只有结束日期，则只在那一天显示
-        # 如果开始日期和结束日期都有效，则在两者之间的每一天都显示
-        dates_to_show = []
-        
-        if start_date_str and end_date_str:
-            try:
-                start_dt = datetime.strptime(start_date_str, "%Y-%m-%d")
-                end_dt = datetime.strptime(end_date_str, "%Y-%m-%d")
-                # 包含开始和结束日期
-                current_dt = start_dt
-                while current_dt <= end_dt:
-                    dates_to_show.append(current_dt.strftime("%Y-%m-%d"))
-                    current_dt += timedelta(days=1)
-            except ValueError:
-                # 日期格式无法解析
-                if start_date_str:
-                    dates_to_show.append(start_date_str)
-                elif end_date_str:
-                    dates_to_show.append(end_date_str)
-        elif start_date_str:
-            dates_to_show.append(start_date_str)
-        elif end_date_str:
-            dates_to_show.append(end_date_str)
-        else:
-            # 日期解析失败，添加到 unknown_date 组
-            task_item = {
-                "record_id": record_id,
-                "task_name": task_name,
-                "assignee": assignee,
-                "status": status,
-                "date": "",  # 日期为空
-                "start_date": start_date_str,
-                "end_date": end_date_str
-            }
-            task_groups["unknown_date"].append(task_item)
-            continue # 跳过后续处理
+        # 4. 为每个日期创建任务项（使用新的辅助函数）
+        for date_str in dates:
+            task_item = create_task_item(
+                record_id=record_id,
+                fields=fields,
+                date=date_str,
+                start_date=start_date_str,
+                end_date=end_date_str
+            )
 
-        # 6. 为每个日期创建任务记录并分组
-        for date_str in dates_to_show:
-            # 确定星期几并分组
-            weekday_key = "unknown_date"
-            try:
-                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                weekday_index = date_obj.weekday()  # Monday is 0, Sunday is 6
-                if 0 <= weekday_index <= 4:
-                    weekday_key = weekdays[weekday_index]
-                else:
-                    weekday_key = "weekend"
-            except ValueError:
-                # 日期格式无法解析
-                pass
-
-            # 构造前端需要的任务对象
-            task_item = {
-                "record_id": record_id,
-                "task_name": task_name,
-                "assignee": assignee,
-                "status": status,
-                "priority": priority,  # 保留原始优先级字段
-                "application_status": application_status,  # 添加申请状态字段
-                "date": date_str,
-                "start_date": start_date_str,
-                "end_date": end_date_str,
-                "weekday": weekday_key
-            }
-
-            # 添加到对应的分组
+            # 根据weekday分组
+            weekday_key = task_item["weekday"]
             task_groups[weekday_key].append(task_item)
 
     return task_groups

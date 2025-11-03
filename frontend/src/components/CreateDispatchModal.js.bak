@@ -1,0 +1,339 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
+import ApprovalTypeSelector from './ApprovalTypeSelector';
+import DailyWorkForm from './DailyWorkForm';
+import EisooVendorForm from './EisooVendorForm';
+import { createDispatch } from '../utils/api';
+
+const URGENCY_PRIORITY_MAP = {
+    紧急: '非常紧急',
+    高: '紧急',
+    中: '重要',
+    低: '普通',
+};
+
+const DAILY_TEMPLATE = {
+    task_name: '',
+    assignee: '',
+    priority: '',
+    start_date: '',
+    end_date: '',
+    description: '',
+};
+
+const EISOO_TEMPLATE = {
+    customer_name: '',
+    issue_type: '',
+    urgency: '',
+    contact_person: '',
+    contact_phone: '',
+    assignee: '',
+    start_date: '',
+    end_date: '',
+    detailed_description: '',
+    product_model: '',
+    serial_number: '',
+};
+
+function createInitialForms() {
+    return {
+        daily_work: { ...DAILY_TEMPLATE },
+        eisoo_vendor: { ...EISOO_TEMPLATE },
+    };
+}
+
+export default function CreateDispatchModal({ isOpen, onClose, onSuccess }) {
+    const [approvalType, setApprovalType] = useState('daily_work');
+    const [forms, setForms] = useState(createInitialForms);
+    const [fieldErrors, setFieldErrors] = useState({});
+    const [generalError, setGeneralError] = useState(null);
+    const [submitError, setSubmitError] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submissionResult, setSubmissionResult] = useState(null);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setApprovalType('');
+            setForms(createInitialForms());
+            setFieldErrors({});
+            setGeneralError(null);
+            setSubmitError(null);
+            setIsSubmitting(false);
+            setSubmissionResult(null);
+        }
+    }, [isOpen]);
+
+    const activeForm = useMemo(() => forms[approvalType] || {}, [approvalType, forms]);
+    const activeErrors = useMemo(() => fieldErrors[approvalType] || {}, [approvalType, fieldErrors]);
+
+    const handleTypeChange = (type) => {
+        setApprovalType(type);
+        setGeneralError(null);
+        setSubmitError(null);
+        setSubmissionResult(null);
+    };
+
+    const handleFieldChange = (field, value) => {
+        if (!approvalType) {
+            return;
+        }
+        setForms((prev) => ({
+            ...prev,
+            [approvalType]: {
+                ...prev[approvalType],
+                [field]: value,
+            },
+        }));
+        setFieldErrors((prev) => {
+            const current = prev[approvalType];
+            if (!current || !current[field]) {
+                return prev;
+            }
+            const updated = { ...current };
+            delete updated[field];
+            return { ...prev, [approvalType]: updated };
+        });
+        setSubmitError(null);
+        setSubmissionResult(null);
+    };
+
+    const validate = useCallback(() => {
+        if (!approvalType) {
+            setGeneralError('请选择工单类型');
+            return false;
+        }
+
+        const data = forms[approvalType] || {};
+        const errorsForType = {};
+
+        if (approvalType === 'daily_work') {
+            const requiredFields = ['task_name', 'assignee', 'priority', 'start_date', 'end_date'];
+            requiredFields.forEach((field) => {
+                if (!data[field]) {
+                    const labels = {
+                        task_name: '任务名称',
+                        assignee: '派工人员',
+                        priority: '优先级',
+                        start_date: '服务开始时间',
+                        end_date: '服务结束时间',
+                    };
+                    errorsForType[field] = `${labels[field]}为必填项`;
+                }
+            });
+        } else if (approvalType === 'eisoo_vendor') {
+            const requiredFields = [
+                'customer_name',
+                'issue_type',
+                'urgency',
+                'contact_person',
+                'contact_phone',
+                'assignee',
+                'start_date',
+                'end_date',
+            ];
+            const labels = {
+                customer_name: '客户名称',
+                issue_type: '问题类型',
+                urgency: '紧急程度',
+                contact_person: '联系人',
+                contact_phone: '联系电话',
+                assignee: '处理工程师',
+                start_date: '预计开始时间',
+                end_date: '预计完成时间',
+            };
+            requiredFields.forEach((field) => {
+                if (!data[field]) {
+                    errorsForType[field] = `${labels[field]}为必填项`;
+                }
+            });
+            if (data.contact_phone) {
+                const phonePattern = /^[0-9+\-\s]{6,}$/;
+                if (!phonePattern.test(data.contact_phone)) {
+                    errorsForType.contact_phone = '请输入有效的联系电话';
+                }
+            }
+        }
+
+        if (data.start_date && data.end_date && data.start_date > data.end_date) {
+            errorsForType.end_date = '结束日期需不早于开始日期';
+        }
+
+        setFieldErrors((prev) => ({ ...prev, [approvalType]: errorsForType }));
+        setGeneralError(null);
+
+        return Object.keys(errorsForType).length === 0;
+    }, [approvalType, forms]);
+
+    const buildPayload = () => {
+        if (approvalType === 'daily_work') {
+            const data = forms.daily_work;
+            return {
+                task_name: data.task_name ? data.task_name.trim() : '',
+                assignee: data.assignee ? data.assignee.trim() : '',
+                priority: data.priority,
+                start_date: data.start_date,
+                end_date: data.end_date,
+                description: data.description ? data.description.trim() : undefined,
+            };
+        }
+
+        if (approvalType === 'eisoo_vendor') {
+            const data = forms.eisoo_vendor;
+            const extraFields = {
+                customer_name: data.customer_name ? data.customer_name.trim() : undefined,
+                issue_type: data.issue_type || undefined,
+                urgency: data.urgency || undefined,
+                contact_person: data.contact_person ? data.contact_person.trim() : undefined,
+                contact_phone: data.contact_phone ? data.contact_phone.trim() : undefined,
+                detailed_description: data.detailed_description ? data.detailed_description.trim() : undefined,
+                product_model: data.product_model ? data.product_model.trim() : undefined,
+                serial_number: data.serial_number ? data.serial_number.trim() : undefined,
+            };
+            const sanitizedExtra = Object.entries(extraFields).reduce((acc, [key, value]) => {
+                if (value) {
+                    acc[key] = value;
+                }
+                return acc;
+            }, {});
+            const derivedTaskName = data.customer_name && data.issue_type
+                ? `${data.customer_name} - ${data.issue_type}`
+                : data.customer_name || '爱数原厂派单';
+            const mappedPriority = URGENCY_PRIORITY_MAP[data.urgency] || '普通';
+
+            const payload = {
+                task_name: derivedTaskName,
+                assignee: data.assignee ? data.assignee.trim() : '',
+                priority: mappedPriority,
+                start_date: data.start_date,
+                end_date: data.end_date,
+                description: data.detailed_description ? data.detailed_description.trim() : undefined,
+            };
+
+            if (Object.keys(sanitizedExtra).length > 0) {
+                payload.extra_fields = sanitizedExtra;
+            }
+
+            return payload;
+        }
+
+        return {};
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setSubmitError(null);
+        setGeneralError(null);
+
+        const isValid = validate();
+        if (!isValid) {
+            return;
+        }
+
+        const payload = buildPayload();
+
+        try {
+            setIsSubmitting(true);
+            const result = await createDispatch(approvalType, payload);
+            setSubmissionResult(result);
+            if (typeof onSuccess === 'function') {
+                onSuccess(result);
+            }
+        } catch (error) {
+            setSubmitError(error.message || '提交失败,请稍后重试');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (!isOpen) {
+        return null;
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 px-4 py-6">
+            <div className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h2 className="text-xl font-semibold text-gray-900">新建派工审批</h2>
+                        <p className="mt-1 text-sm text-gray-500">请选择工单类型并填写对应信息</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-gray-400 transition hover:text-gray-600"
+                        aria-label="关闭"
+                    >
+                        <span className="text-2xl leading-none">×</span>
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+                    <ApprovalTypeSelector value={approvalType} onChange={handleTypeChange} />
+
+                    {generalError && <p className="text-sm text-red-600">{generalError}</p>}
+
+                    {approvalType === 'daily_work' && (
+                        <DailyWorkForm
+                            formData={activeForm}
+                            onChange={handleFieldChange}
+                            errors={activeErrors}
+                        />
+                    )}
+
+                    {approvalType === 'eisoo_vendor' && (
+                        <EisooVendorForm
+                            formData={activeForm}
+                            onChange={handleFieldChange}
+                            errors={activeErrors}
+                        />
+                    )}
+
+                    {submissionResult?.success && (
+                        <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                            <p>{submissionResult.message || '派工申请已提交,等待审批'}</p>
+                            {submissionResult.approval_url && (
+                                <a
+                                    href={submissionResult.approval_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 inline-flex items-center text-green-700 underline hover:text-green-800"
+                                >
+                                    查看审批详情
+                                </a>
+                            )}
+                        </div>
+                    )}
+
+                    {submitError && (
+                        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                            {submitError}
+                        </div>
+                    )}
+
+                    <div className="flex justify-end space-x-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="inline-flex items-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                        >
+                            取消
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                        >
+                            {isSubmitting ? '提交中...' : '提交派工'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+CreateDispatchModal.propTypes = {
+    isOpen: PropTypes.bool.isRequired,
+    onClose: PropTypes.func.isRequired,
+    onSuccess: PropTypes.func,
+};

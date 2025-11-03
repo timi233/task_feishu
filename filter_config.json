@@ -1,0 +1,18 @@
+{
+  "filters": {
+    "default": {
+      "enabled": true,
+      "conditions": [
+        {
+          "field": "status",
+          "operator": "not_in",
+          "value": [
+            "已取消",
+            "已关闭"
+          ]
+        }
+      ]
+    }
+  },
+  "active_filter": "default"
+}

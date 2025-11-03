@@ -1,0 +1,530 @@
+[
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": false,
+    "id": "widget1650009430450184848162296858",
+    "name": "产品分类",
+    "option": [
+      {
+        "value": "$i18n-lyz9eion-w5n0dd4sv2-1",
+        "text": "IP-Guard"
+      },
+      {
+        "value": "lyz9kond-9dm9uga1zjr-1",
+        "text": "绿盟"
+      },
+      {
+        "value": "lyz9kond-tck6x3d09pf-3",
+        "text": "爱数"
+      },
+      {
+        "value": "lyz9kond-2yz4yb906gz-9",
+        "text": "深信服"
+      },
+      {
+        "value": "lyz9kond-913fppzm7i-11",
+        "text": "其他产品"
+      },
+      {
+        "value": "md83vccl-hhltbf2a9ok-1",
+        "text": "公司事务"
+      }
+    ],
+    "printable": true,
+    "required": false,
+    "type": "radioV2",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": {
+      "conditional": "OR",
+      "conditions": [
+        {
+          "conditional": "AND",
+          "conditions": null,
+          "expressions": [
+            {
+              "source_widget": {
+                "id": "widget1650009430450184848162296858",
+                "custom_id": ""
+              },
+              "compare_type": "not",
+              "standard_value": "md83vccl-hhltbf2a9ok-1"
+            }
+          ]
+        }
+      ],
+      "expressions": null
+    },
+    "enable_default_value": false,
+    "id": "widget17501252855820001",
+    "name": "产品型号",
+    "printable": true,
+    "required": false,
+    "type": "input",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": {
+      "conditional": "OR",
+      "conditions": [
+        {
+          "conditional": "AND",
+          "conditions": null,
+          "expressions": [
+            {
+              "source_widget": {
+                "id": "widget1650009430450184848162296858",
+                "custom_id": ""
+              },
+              "compare_type": "not",
+              "standard_value": "md83vccl-hhltbf2a9ok-1"
+            }
+          ]
+        }
+      ],
+      "expressions": null
+    },
+    "enable_default_value": false,
+    "id": "widget17501233300350001",
+    "name": "工作类型",
+    "option": [
+      {
+        "value": "mbzu8s1f-vwu4z365ol9-0",
+        "text": "售前沟通"
+      },
+      {
+        "value": "mbzu8s1f-h06lgx5tq5a-0",
+        "text": "部署测试"
+      },
+      {
+        "value": "mbzu8s1f-mxcd9teffq7-0",
+        "text": "实施交付"
+      },
+      {
+        "value": "mbzu8s1z-9c86y5yzu69-1",
+        "text": "客户培训"
+      },
+      {
+        "value": "mbzu8s1z-29lbzl26mg8-3",
+        "text": "渠道培训"
+      },
+      {
+        "value": "mbzwl9wm-q67ok7d0op9-1",
+        "text": "测试问题处理"
+      },
+      {
+        "value": "mbzwor2v-z0w3tb73hbq-1",
+        "text": "售后问题处理"
+      },
+      {
+        "value": "md4c7m2v-jka98t1d9wt-1",
+        "text": "售后巡检"
+      },
+      {
+        "value": "mbzwor2v-kuu3trga15p-3",
+        "text": "其他-请在工作内容里注明"
+      }
+    ],
+    "printable": true,
+    "required": false,
+    "type": "radioV2",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": false,
+    "id": "widget1650009430707233634337573427",
+    "name": "优先级",
+    "option": [
+      {
+        "value": "option_0",
+        "text": "一般"
+      },
+      {
+        "value": "lyz9n4bt-i4i8v2awd3d-1",
+        "text": "重要"
+      },
+      {
+        "value": "option_1",
+        "text": "紧急"
+      },
+      {
+        "value": "option_2",
+        "text": "非常紧急"
+      }
+    ],
+    "printable": true,
+    "required": false,
+    "type": "radioV2",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": false,
+    "id": "widget17501273795460001",
+    "name": "工作方式",
+    "option": [
+      {
+        "value": "mbzwnknv-22yeout010c-0",
+        "text": "线上"
+      },
+      {
+        "value": "mbzwnknv-wmbxe828bsm-0",
+        "text": "线下"
+      }
+    ],
+    "printable": true,
+    "required": false,
+    "type": "radioV2",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": true,
+    "id": "widget17553090513020001",
+    "name": "服务开始时间",
+    "options": {
+      "dateCheckEnd": 0,
+      "dateCheckStart": 0,
+      "dateCheckType": 0
+    },
+    "printable": true,
+    "required": false,
+    "type": "date",
+    "value": "YYYY-MM-DD",
+    "visible": true,
+    "widget_default_value": "0"
+  },
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": false,
+    "id": "widget17553090644560001",
+    "name": "服务开始时间-时间段",
+    "option": [
+      {
+        "value": "medlp2bs-onendilsd2b-0",
+        "text": "上午"
+      },
+      {
+        "value": "medlp2bs-f4tm4fvvo3k-0",
+        "text": "下午"
+      }
+    ],
+    "printable": true,
+    "required": false,
+    "type": "radioV2",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": true,
+    "id": "widget17553090563410001",
+    "name": "服务结束时间",
+    "options": {
+      "dateCheckEnd": 0,
+      "dateCheckStart": 0,
+      "dateCheckType": 0
+    },
+    "printable": true,
+    "required": false,
+    "type": "date",
+    "value": "YYYY-MM-DD",
+    "visible": true,
+    "widget_default_value": "0"
+  },
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": false,
+    "id": "widget17553090673240001",
+    "name": "服务结束时间-时间段",
+    "option": [
+      {
+        "value": "medlp4jg-uq361wuhfwi-0",
+        "text": "上午"
+      },
+      {
+        "value": "medlp4jg-wbicoy6p32a-0",
+        "text": "下午"
+      }
+    ],
+    "printable": true,
+    "required": false,
+    "type": "radioV2",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": false,
+    "id": "widget17501254293910001",
+    "name": "售后工程师",
+    "printable": true,
+    "required": false,
+    "type": "contact",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": false,
+    "id": "widget17553091304870001",
+    "name": "工作内容",
+    "printable": true,
+    "required": false,
+    "type": "input",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": {
+      "conditional": "OR",
+      "conditions": [
+        {
+          "conditional": "AND",
+          "conditions": null,
+          "expressions": [
+            {
+              "source_widget": {
+                "id": "widget1650009430450184848162296858",
+                "custom_id": ""
+              },
+              "compare_type": "not",
+              "standard_value": "md83vccl-hhltbf2a9ok-1"
+            }
+          ]
+        }
+      ],
+      "expressions": null
+    },
+    "enable_default_value": false,
+    "id": "widget1650009430661041708057438223",
+    "name": "客户公司名称",
+    "printable": true,
+    "required": false,
+    "type": "input",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": {
+      "conditional": "OR",
+      "conditions": [
+        {
+          "conditional": "AND",
+          "conditions": null,
+          "expressions": [
+            {
+              "source_widget": {
+                "id": "widget1650009430450184848162296858",
+                "custom_id": ""
+              },
+              "compare_type": "not",
+              "standard_value": "md83vccl-hhltbf2a9ok-1"
+            }
+          ]
+        }
+      ],
+      "expressions": null
+    },
+    "enable_default_value": false,
+    "id": "widget17218043024090001",
+    "name": "客户联系人",
+    "printable": true,
+    "required": false,
+    "type": "input",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": false,
+    "id": "widget17555676755350001",
+    "name": "客户联系方式",
+    "printable": true,
+    "required": false,
+    "type": "number",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": {
+      "conditional": "OR",
+      "conditions": [
+        {
+          "conditional": "AND",
+          "conditions": null,
+          "expressions": [
+            {
+              "source_widget": {
+                "id": "widget1650009430450184848162296858",
+                "custom_id": ""
+              },
+              "compare_type": "not",
+              "standard_value": "md83vccl-hhltbf2a9ok-1"
+            }
+          ]
+        }
+      ],
+      "expressions": null
+    },
+    "enable_default_value": false,
+    "id": "widget17218044288600001",
+    "name": "是否有渠道",
+    "option": [
+      {
+        "value": "lyzhwg1r-2o9cpkugytw-0",
+        "text": "是"
+      },
+      {
+        "value": "lyzhwg1r-mlkd4e9ew1e-0",
+        "text": "否"
+      }
+    ],
+    "printable": true,
+    "required": false,
+    "type": "radioV2",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": {
+      "conditional": "OR",
+      "conditions": [
+        {
+          "conditional": "AND",
+          "conditions": null,
+          "expressions": [
+            {
+              "source_widget": {
+                "id": "widget17218044288600001",
+                "custom_id": ""
+              },
+              "compare_type": "is",
+              "standard_value": "lyzhwg1r-2o9cpkugytw-0"
+            }
+          ]
+        }
+      ],
+      "expressions": null
+    },
+    "enable_default_value": false,
+    "id": "widget17217912950250001",
+    "name": "渠道名称",
+    "printable": true,
+    "required": false,
+    "type": "input",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": {
+      "conditional": "OR",
+      "conditions": [
+        {
+          "conditional": "AND",
+          "conditions": null,
+          "expressions": [
+            {
+              "source_widget": {
+                "id": "widget17218044288600001",
+                "custom_id": ""
+              },
+              "compare_type": "is",
+              "standard_value": "lyzhwg1r-2o9cpkugytw-0"
+            }
+          ]
+        }
+      ],
+      "expressions": null
+    },
+    "enable_default_value": false,
+    "id": "widget17218041850570001",
+    "name": "渠道联系人",
+    "printable": true,
+    "required": false,
+    "type": "input",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": null,
+    "enable_default_value": false,
+    "id": "widget17555677009440001",
+    "name": "渠道联系人联系方式",
+    "printable": true,
+    "required": false,
+    "type": "number",
+    "visible": true,
+    "widget_default_value": ""
+  },
+  {
+    "default_value_type": "",
+    "display_condition": {
+      "conditional": "OR",
+      "conditions": [
+        {
+          "conditional": "AND",
+          "conditions": null,
+          "expressions": [
+            {
+              "source_widget": {
+                "id": "widget1650009430450184848162296858",
+                "custom_id": ""
+              },
+              "compare_type": "not",
+              "standard_value": "md83vccl-hhltbf2a9ok-1"
+            }
+          ]
+        }
+      ],
+      "expressions": null
+    },
+    "enable_default_value": false,
+    "id": "widget17501326783360001",
+    "name": "工程师身份",
+    "option": [
+      {
+        "value": "mbzzt58g-84x2btd0sn8-0",
+        "text": "厂家"
+      },
+      {
+        "value": "mbzzt58g-fpwwds5bg3e-0",
+        "text": "总代"
+      },
+      {
+        "value": "mbzztc7y-yrb23u7f7un-1",
+        "text": "公司"
+      }
+    ],
+    "printable": true,
+    "required": false,
+    "type": "radioV2",
+    "visible": true,
+    "widget_default_value": ""
+  }
+]

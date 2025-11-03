@@ -1,0 +1,51 @@
+{
+  "code": 0,
+  "data": {
+    "approval_name": "爱数原厂派单",
+    "form": "[{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":false,\"id\":\"widget17604215175840001\",\"name\":\"厂家对接人\",\"printable\":true,\"required\":true,\"type\":\"input\",\"visible\":true,\"widget_default_value\":\"\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":false,\"id\":\"widget17552252938540001\",\"name\":\"产品分类\",\"option\":[{\"value\":\"mec7tkip-g5kzhjp1ije-0\",\"text\":\"AnyBackup\"},{\"value\":\"mec7tkip-daqmniodrgq-0\",\"text\":\"AnyShare\"},{\"value\":\"mec7tkip-1ex4gm171pvj-0\",\"text\":\"其他产品\"}],\"printable\":true,\"required\":false,\"type\":\"radioV2\",\"visible\":true,\"widget_default_value\":\"\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":false,\"id\":\"widget17552257002060001\",\"name\":\"工作方式\",\"option\":[{\"value\":\"mec82a26-b5n4tqjpk5-0\",\"text\":\"线上\"},{\"value\":\"mec82a26-clmm8eu8ji-0\",\"text\":\"线下\"}],\"printable\":true,\"required\":false,\"type\":\"radioV2\",\"visible\":true,\"widget_default_value\":\"\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":true,\"id\":\"widget17552257384470001\",\"name\":\"服务开始时间\",\"options\":{\"dateCheckEnd\":0,\"dateCheckStart\":0,\"dateCheckType\":0},\"printable\":true,\"required\":false,\"type\":\"date\",\"value\":\"YYYY-MM-DD\",\"visible\":true,\"widget_default_value\":\"0\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":false,\"id\":\"widget17552257908810001\",\"name\":\"服务开始时间-时间段\",\"option\":[{\"value\":\"mec8480x-6ges07fbkog-0\",\"text\":\"上午\"},{\"value\":\"mec8480x-9p25azccd6n-0\",\"text\":\"下午\"}],\"printable\":true,\"required\":false,\"type\":\"radioV2\",\"visible\":true,\"widget_default_value\":\"\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":true,\"id\":\"widget17552258803190001\",\"name\":\"服务结束时间\",\"options\":{\"dateCheckEnd\":0,\"dateCheckStart\":0,\"dateCheckType\":0},\"printable\":true,\"required\":false,\"type\":\"date\",\"value\":\"YYYY-MM-DD\",\"visible\":true,\"widget_default_value\":\"0\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":false,\"id\":\"widget17552258908330001\",\"name\":\"服务结束时间-时间段\",\"option\":[{\"value\":\"mec86d5d-vx8lugbu8yg-0\",\"text\":\"上午\"},{\"value\":\"mec86d5d-oyzfwbazs7l-0\",\"text\":\"下午\"}],\"printable\":true,\"required\":false,\"type\":\"radioV2\",\"visible\":true,\"widget_default_value\":\"\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":false,\"id\":\"widget17552259047310001\",\"name\":\"售后工程师\",\"printable\":true,\"required\":false,\"type\":\"contact\",\"visible\":true,\"widget_default_value\":\"\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":false,\"id\":\"widget17552259222440001\",\"name\":\"工作内容\",\"printable\":true,\"required\":false,\"type\":\"input\",\"visible\":true,\"widget_default_value\":\"\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":false,\"id\":\"widget17552259414290001\",\"name\":\"客户公司名称\",\"printable\":true,\"required\":false,\"type\":\"input\",\"visible\":true,\"widget_default_value\":\"\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":false,\"id\":\"widget17552259944390001\",\"name\":\"客户联系人\",\"printable\":true,\"required\":false,\"type\":\"input\",\"visible\":true,\"widget_default_value\":\"\"},{\"default_value_type\":\"\",\"display_condition\":null,\"enable_default_value\":false,\"id\":\"widget17552260553850001\",\"name\":\"客户联系方式\",\"option\":{\"available_type\":\"MOBILE\"},\"printable\":true,\"required\":false,\"type\":\"telephone\",\"visible\":true,\"widget_default_value\":\"\"}]",
+    "form_widget_relation": "{\"groups\":[]}",
+    "node_list": [
+      {
+        "approver_chosen_multi": true,
+        "name": "审批",
+        "need_approver": false,
+        "node_id": "43ca83a0101f9e0b44448ed0aa8a9f57",
+        "node_type": "AND",
+        "require_signature": false
+      },
+      {
+        "approver_chosen_multi": false,
+        "name": "结束",
+        "need_approver": false,
+        "node_id": "b1a326c06d88bf042f73d70f50197905",
+        "node_type": "AND",
+        "require_signature": false
+      },
+      {
+        "approver_chosen_multi": true,
+        "name": "办理",
+        "need_approver": false,
+        "node_id": "2e07cffc9159f4228149f1a788ea2f88",
+        "node_type": "OR",
+        "require_signature": false
+      },
+      {
+        "approver_chosen_multi": false,
+        "name": "提交",
+        "need_approver": false,
+        "node_id": "b078ffd28db767c502ac367053f6e0ac",
+        "node_type": "AND",
+        "require_signature": false
+      }
+    ],
+    "status": "ACTIVE",
+    "viewers": [
+      {
+        "id": "ou_ad883f9af7460763443f4b8b234e25b2",
+        "type": "USER",
+        "user_id": "a2e9eg2d"
+      }
+    ]
+  },
+  "msg": ""
+}
