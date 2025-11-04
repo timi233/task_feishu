@@ -20,6 +20,8 @@ APPROVAL_STATUS_FIELD = "审批状态"
 # 日期字段 (开始时间和结束时间)
 START_DATE_FIELD = "服务开始时间"  # 开始日期字段 (时间戳)
 END_DATE_FIELD = "服务结束时间"    # 结束日期字段 (时间戳)
+# 发起人字段
+CREATOR_FIELD = "发起人"  # 发起人字段 (用户对象)
 # --- 配置结束 ---
 
 
@@ -121,6 +123,36 @@ def extract_assignee(assignee_field: Any) -> str:
     return "未知负责人"
 
 
+def extract_creator(creator_field: Any) -> tuple[str | None, str | None]:
+    """
+    提取发起人ID和姓名
+
+    Args:
+        creator_field: 发起人字段（可能是字典/列表/None）
+
+    Returns:
+        (creator_id, creator_name) 元组，如果无法提取则返回 (None, None)
+    """
+    # 单个用户对象（常见情况）
+    if isinstance(creator_field, dict):
+        user_id = creator_field.get("id")
+        user_name = creator_field.get("name")
+        if user_id and user_name:
+            return (user_id, user_name)
+
+    # 列表形式（取第一个）
+    if isinstance(creator_field, list) and len(creator_field) > 0:
+        first_user = creator_field[0]
+        if isinstance(first_user, dict):
+            user_id = first_user.get("id")
+            user_name = first_user.get("name")
+            if user_id and user_name:
+                return (user_id, user_name)
+
+    # 无法提取
+    return (None, None)
+
+
 def map_application_status(application_status: str, priority: str) -> str:
     """
     将申请状态转换为展示状态
@@ -168,6 +200,9 @@ def create_task_item(
     # 提取负责人
     assignee = extract_assignee(fields.get(ASSIGNEE_FIELD))
 
+    # 提取发起人
+    creator_id, creator_name = extract_creator(fields.get(CREATOR_FIELD))
+
     # 提取状态
     priority = fields.get(PRIORITY_FIELD, "未知优先级")
     application_status = fields.get(APPLICATION_STATUS_FIELD, "")
@@ -184,6 +219,8 @@ def create_task_item(
         "record_id": record_id,
         "task_name": task_name,
         "assignee": assignee,
+        "creator_id": creator_id,
+        "creator_name": creator_name,
         "status": status,
         "priority": priority,
         "application_status": application_status,

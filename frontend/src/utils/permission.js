@@ -286,6 +286,13 @@ export function canManageUser() {
   return hasAnyPermission(['user:create', 'user:read', 'user:update', 'user:delete']);
 }
 
+/**
+ * 检查是否有角色分配权限（系统管理员）
+ */
+export function canAssignRole() {
+  return hasPermission('role:assign');
+}
+
 // ============================================
 // 权限相关常量
 // ============================================

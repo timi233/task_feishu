@@ -25,6 +25,20 @@ const LoginButton = () => {
       if (response.ok) {
         const data = await response.json();
         setAuthStatus(data);
+
+        // 如果已认证，保存用户信息到localStorage（供权限检查使用）
+        if (data.authenticated && data.user_id) {
+          localStorage.setItem('userInfo', JSON.stringify({
+            user_id: data.user_id,
+            name: data.user_name,
+            email: data.user_email,
+            permissions: data.permissions || [],
+            roles: data.roles || []
+          }));
+        } else {
+          // 未认证时清除localStorage
+          localStorage.removeItem('userInfo');
+        }
       }
     } catch (error) {
       console.error('Failed to check auth status:', error);
@@ -54,13 +68,16 @@ const LoginButton = () => {
       });
 
       if (response.ok) {
+        // 清除localStorage中的用户信息
+        localStorage.removeItem('userInfo');
+
         setAuthStatus({
           authenticated: false,
           user_name: null,
           identity_hub_available: authStatus.identity_hub_available
         });
 
-        // 可选：刷新页面
+        // 刷新页面以清除所有状态
         window.location.reload();
       }
     } catch (error) {

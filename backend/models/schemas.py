@@ -18,6 +18,8 @@ class TaskItem(BaseModel):
     record_id: str
     task_name: str
     assignee: str
+    creator_id: Optional[str] = None # 提交人ID
+    creator_name: Optional[str] = None # 提交人姓名
     status: str # 展示状态（进行中/已结束/优先级）
     priority: Optional[str] = None # 原始优先级
     application_status: Optional[str] = None # 申请状态

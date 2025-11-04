@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import LoginButton from './LoginButton';
+import { canAssignRole } from '../utils/permission';
 
 /**
  * Display the dashboard header with title, subtitle, and the current date.
@@ -13,6 +14,7 @@ import LoginButton from './LoginButton';
  * @param {Function} [props.onToggleAutoSync] Callback to toggle auto sync.
  * @param {Date} [props.nextSyncTime] Next scheduled sync time.
  * @param {Function} [props.onCreateDispatch] Callback function when create dispatch button is clicked.
+ * @param {Function} [props.onManageUsers] Callback function when user management button is clicked (system admin only).
  */
 export default function Header({
     title = '派工管理系统',
@@ -25,7 +27,10 @@ export default function Header({
     nextSyncTime,
     onCreateDispatch,
     onManageDispatches,
+    onManageUsers,
 }) {
+    // 检查用户是否有系统管理员权限
+    const hasAdminPermission = canAssignRole();
     const formattedDate = useMemo(() => {
         const baseDate = date ? new Date(date) : new Date();
         return baseDate.toLocaleDateString('zh-CN', {
@@ -70,8 +75,8 @@ export default function Header({
                         {/* 登录按钮 */}
                         <LoginButton />
 
-                        {/* 新建派工按钮 */}
-                        {onCreateDispatch && (
+                        {/* 新建派工按钮 (仅系统管理员可见) */}
+                        {onCreateDispatch && hasAdminPermission && (
                             <button
                                 type="button"
                                 onClick={onCreateDispatch}
@@ -83,8 +88,8 @@ export default function Header({
                             </button>
                         )}
 
-                        {/* 工单管理按钮 */}
-                        {onManageDispatches && (
+                        {/* 工单管理按钮 (仅系统管理员可见) */}
+                        {onManageDispatches && hasAdminPermission && (
                             <button
                                 type="button"
                                 onClick={onManageDispatches}
@@ -93,6 +98,19 @@ export default function Header({
                             >
                                 <i className="fas fa-list-alt" />
                                 <span className="hidden sm:inline">工单管理</span>
+                            </button>
+                        )}
+
+                        {/* 用户管理按钮 (仅系统管理员可见) */}
+                        {onManageUsers && hasAdminPermission && (
+                            <button
+                                type="button"
+                                onClick={onManageUsers}
+                                className="px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700"
+                                title="用户管理"
+                            >
+                                <i className="fas fa-users-cog" />
+                                <span className="hidden sm:inline">用户管理</span>
                             </button>
                         )}
 

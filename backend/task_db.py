@@ -171,14 +171,16 @@ def save_processed_tasks_to_db(processed_tasks: Dict[str, List[Dict[str, Any]]])
             for task in tasks:
                 cursor.execute("""
                     INSERT OR REPLACE INTO tasks
-                    (record_id, task_name, assignee, status, date, start_date, end_date,
-                     weekday, priority, application_status, approval_instance_code,
-                     approval_status, last_updated)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    (record_id, task_name, assignee, creator_id, creator_name, status, date,
+                     start_date, end_date, weekday, priority, application_status,
+                     approval_instance_code, approval_status, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """, (
                     task["record_id"],
                     task["task_name"],
                     task["assignee"],
+                    task.get("creator_id"),
+                    task.get("creator_name"),
                     task["status"],
                     task["date"],
                     task.get("start_date"),
@@ -220,15 +222,17 @@ def get_tasks_from_db(start_date: Optional[str] = None, end_date: Optional[str] 
         if start_date and end_date:
             logger.info("Fetching tasks for date range: %s to %s", start_date, end_date)
             cursor.execute("""
-                SELECT record_id, task_name, assignee, status, priority, application_status, date, start_date, end_date, weekday 
-                FROM tasks 
+                SELECT record_id, task_name, assignee, creator_id, creator_name, status, priority,
+                       application_status, date, start_date, end_date, weekday
+                FROM tasks
                 WHERE date BETWEEN ? AND ?
                 ORDER BY date
             """, (start_date, end_date))
         else:
             logger.info("Fetching all tasks from database")
             cursor.execute("""
-                SELECT record_id, task_name, assignee, status, priority, application_status, date, start_date, end_date, weekday 
+                SELECT record_id, task_name, assignee, creator_id, creator_name, status, priority,
+                       application_status, date, start_date, end_date, weekday
                 FROM tasks
                 ORDER BY date
             """)
@@ -241,6 +245,8 @@ def get_tasks_from_db(start_date: Optional[str] = None, end_date: Optional[str] 
                 "record_id": row["record_id"],
                 "task_name": row["task_name"],
                 "assignee": row["assignee"],
+                "creator_id": row["creator_id"],
+                "creator_name": row["creator_name"],
                 "status": row["status"],
                 "priority": row["priority"],
                 "application_status": row["application_status"],

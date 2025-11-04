@@ -7,13 +7,13 @@ import os
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel, root_validator, validator
 
 import approval_config
 from feishu_approval import FeishuApprovalManager, ApprovalAPIError
 from task_db import get_db_connection
-from auth_permission import require_permission, require_any_permission
+from auth_permission import require_permission
 
 logger = logging.getLogger(__name__)
 
@@ -268,8 +268,10 @@ def assignee_exists(assignee: str) -> bool:
 
 
 @router.post("")
-@require_permission("task:create")
-async def create_dispatch(request: Request, payload: CreateDispatchRequest) -> Dict[str, Any]:
+async def create_dispatch(
+    payload: CreateDispatchRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("task:create"))
+) -> Dict[str, Any]:
     """创建派工(新建审批实例)。
 
     流程:
@@ -355,8 +357,9 @@ async def create_dispatch(request: Request, payload: CreateDispatchRequest) -> D
 
 
 @router.get("/types")
-@require_any_permission("task:read", "task:create", "task:update", "task:delete")
-async def list_approval_types(request: Request) -> Dict[str, Any]:
+async def list_approval_types(
+    current_user: Dict[str, Any] = Depends(require_permission("task:read"))
+) -> Dict[str, Any]:
     """获取所有可用的审批类型供前端选择。"""
     return {
         "success": True,
@@ -365,11 +368,10 @@ async def list_approval_types(request: Request) -> Dict[str, Any]:
 
 
 @router.put("/{instance_code}")
-@require_permission("task:update")
 async def update_dispatch(
-    request: Request,
     instance_code: str,
-    payload: UpdateDispatchRequest
+    payload: UpdateDispatchRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("task:update"))
 ) -> Dict[str, Any]:
     """修改派工(撤回旧实例并创建新实例)。
 
@@ -452,11 +454,10 @@ async def update_dispatch(
 
 
 @router.post("/{instance_code}/transfer")
-@require_permission("task:update")
 async def transfer_dispatch(
-    request: Request,
     instance_code: str,
-    payload: TransferDispatchRequest
+    payload: TransferDispatchRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("task:update"))
 ) -> Dict[str, Any]:
     """转交派工(撤回旧实例并转交给新工程师)。
 
@@ -570,11 +571,10 @@ async def transfer_dispatch(
 
 
 @router.delete("/{instance_code}")
-@require_permission("task:delete")
 async def close_dispatch(
-    request: Request,
     instance_code: str,
-    payload: CloseDispatchRequest
+    payload: CloseDispatchRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("task:delete"))
 ) -> Dict[str, Any]:
     """关闭派工(撤回审批实例)。
 
@@ -616,11 +616,10 @@ async def close_dispatch(
 
 
 @router.post("/{instance_code}/complete")
-@require_permission("task:update")
 async def complete_dispatch(
-    request: Request,
     instance_code: str,
-    payload: CompleteDispatchRequest
+    payload: CompleteDispatchRequest,
+    current_user: Dict[str, Any] = Depends(require_permission("task:update"))
 ) -> Dict[str, Any]:
     """完成派工(标记任务完成)。
 
@@ -674,8 +673,10 @@ async def complete_dispatch(
 
 
 @router.get("/{instance_code}", response_model=ApprovalDetailResponse)
-@require_any_permission("task:read", "task:update", "task:delete")
-async def get_approval_detail(request: Request, instance_code: str) -> ApprovalDetailResponse:
+async def get_approval_detail(
+    instance_code: str,
+    current_user: Dict[str, Any] = Depends(require_permission("task:read"))
+) -> ApprovalDetailResponse:
     """查询审批实例详情。
 
     返回内容:

@@ -5,14 +5,15 @@
 """
 
 import logging
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Query, Depends
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, HTTPException, Query, Depends, Request
 
 from models.schemas import TaskGroup, TaskListResponse, StatsResponse, TaskItem
 from task_db import get_tasks_from_db, get_db_connection, get_week_range
 from task_filter import task_filter
 from auth import verify_readonly_api_key
 from rate_limit import check_rate_limit
+from auth_permission import get_current_user_optional, get_user_data_scope
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ router = APIRouter(
 
 @router.get("", response_model=TaskGroup)
 async def get_tasks(
+    request: Request,
     start_date: Optional[str] = Query(None, description="开始日期 (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束日期 (YYYY-MM-DD)"),
     filter_name: Optional[str] = Query(None, description="筛选器名称")
@@ -34,8 +36,28 @@ async def get_tasks(
     如果不提供 start_date 和 end_date，则返回本周任务数据。
     如果提供 start_date 和 end_date，则返回该日期范围内的任务数据。
     可以通过 filter_name 参数指定使用哪个筛选器。
+
+    权限控制：
+    - 未登录：返回空数据
+    - 普通用户：只能看到自己作为发起人或指派工程师的任务
+    - 管理者/系统管理员：可以看到所有任务
     """
     print(f"Received request to /api/tasks with start_date={start_date}, end_date={end_date}, filter_name={filter_name}")
+
+    # 1. 检查用户登录状态
+    current_user = await get_current_user_optional(request)
+
+    # 2. 如果未登录，返回空任务组
+    if not current_user:
+        logger.info("未登录用户访问任务列表，返回空数据")
+        return TaskGroup(
+            monday=[], tuesday=[], wednesday=[], thursday=[],
+            friday=[], weekend=[], unknown_date=[]
+        )
+
+    user_id = current_user.get("user_id")
+    user_name = current_user.get("user_name", "Unknown")
+    logger.info(f"用户 {user_name}({user_id}) 访问任务列表")
 
     try:
         # 如果提供了筛选器名称或使用激活的筛选器，则从数据库获取所有任务进行筛选
@@ -74,6 +96,45 @@ async def get_tasks(
             print("Filtered tasks details:")
             for i, task in enumerate(filtered_tasks):
                 print(f"  {i+1}. Record ID: {task.get('record_id')}, Weekday: {task.get('weekday')}")
+
+        # 3. 应用数据权限过滤
+        data_scope = get_user_data_scope(user_id)
+        logger.info(f"用户 {user_name} 的数据范围: {data_scope}")
+
+        if data_scope == "self":
+            # 普通用户：只能看到自己作为发起人或指派工程师的任务
+            permission_filtered_tasks = []
+            for task in filtered_tasks:
+                creator_id = task.get("creator_id")
+                assignee = task.get("assignee")
+
+                # 检查是否为发起人或指派工程师
+                # creator_id 可能是飞书用户ID，需要通过 engineers 表查找对应的 name
+                is_creator = False
+                if creator_id:
+                    # 如果 creator_id 和 user_id 直接匹配
+                    if creator_id == user_id:
+                        is_creator = True
+                    else:
+                        # 或者通过姓名匹配（因为可能存在ID格式不一致）
+                        # 这里暂时通过姓名匹配
+                        with get_db_connection() as conn:
+                            cursor = conn.cursor()
+                            cursor.execute("SELECT name FROM engineers WHERE user_id = ?", (creator_id,))
+                            creator_row = cursor.fetchone()
+                            if creator_row and creator_row["name"] == user_name:
+                                is_creator = True
+
+                is_assignee = (assignee == user_name)
+
+                if is_creator or is_assignee:
+                    permission_filtered_tasks.append(task)
+
+            filtered_tasks = permission_filtered_tasks
+            logger.info(f"普通用户 {user_name} 权限过滤后任务数: {len(filtered_tasks)}")
+        else:
+            # 管理者/系统管理员：可以看到所有任务
+            logger.info(f"管理者/系统管理员 {user_name} 可以查看所有任务")
 
         # 重新按星期分组，并只保留指定日期范围内的任务
         filtered_task_groups = {

@@ -9,6 +9,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import CreateDispatchModal from './components/CreateDispatchModal';
 import DispatchManagementPanel from './components/DispatchManagementPanel';
+import UserManagement from './components/UserManagement';
 import useTasks from './hooks/useTasks';
 import useTimeFilter from './hooks/useTimeFilter';
 import { formatDate } from './utils/dateUtils';
@@ -53,6 +54,9 @@ function App() {
     // Dispatch modal state
     const [showCreateDispatchModal, setShowCreateDispatchModal] = useState(false);
     const [showDispatchManagementPanel, setShowDispatchManagementPanel] = useState(false);
+
+    // User management state
+    const [showUserManagement, setShowUserManagement] = useState(false);
 
     const currentRange = periodDisplay?.range || periodDisplay?.dateRange;
     const rangeStart = currentRange?.start;
@@ -105,6 +109,14 @@ function App() {
 
     const handleCloseManagementPanel = useCallback(() => {
         setShowDispatchManagementPanel(false);
+    }, []);
+
+    const handleManageUsers = useCallback(() => {
+        setShowUserManagement(true);
+    }, []);
+
+    const handleCloseUserManagement = useCallback(() => {
+        setShowUserManagement(false);
     }, []);
 
     const handleSync = useCallback(async () => {
@@ -282,6 +294,7 @@ function App() {
                 nextSyncTime={nextSyncTime}
                 onCreateDispatch={handleCreateDispatch}
                 onManageDispatches={handleManageDispatches}
+                onManageUsers={handleManageUsers}
             />
 
             {/* 同步消息提示 */}
@@ -404,6 +417,23 @@ function App() {
                 isOpen={showDispatchManagementPanel}
                 onClose={handleCloseManagementPanel}
             />
+
+            {/* 用户管理页面 */}
+            {showUserManagement && (
+                <div className="fixed inset-0 bg-white z-50 overflow-auto">
+                    <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm z-10">
+                        <h2 className="text-xl font-semibold">用户管理</h2>
+                        <button
+                            onClick={handleCloseUserManagement}
+                            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition-all flex items-center gap-2"
+                        >
+                            <i className="fas fa-arrow-left" />
+                            返回
+                        </button>
+                    </div>
+                    <UserManagement />
+                </div>
+            )}
         </div>
     );
 }

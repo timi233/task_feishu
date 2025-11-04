@@ -157,26 +157,84 @@ async def callback(
         # 获取用户信息
         user_info = identity_hub_client.get_user_info(token_data["access_token"])
 
-        # 获取用户权限
+        user_id = user_info["sub"]
+        user_name = user_info["name"]
+
+        # ===  检查是否为Identity Hub用户，并查找同名飞书用户 ===
+        from task_db import get_db_connection
+        from auth_permission import get_user_permissions
+
+        is_identity_hub_user = user_id.startswith("ou_") or "-" in user_id
+        actual_user_id = user_id  # 实际使用的user_id（可能是飞书ID）
+
+        if is_identity_hub_user:
+            # 查找同名飞书用户
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT user_id FROM engineers
+                    WHERE name = ?
+                    AND user_id NOT LIKE 'ou_%'
+                    AND user_id NOT LIKE '%-%-%-%-%'
+                    LIMIT 1
+                """, (user_name,))
+                feishu_user = cursor.fetchone()
+
+                if feishu_user:
+                    actual_user_id = feishu_user['user_id']
+                    logger.info(f"⚠️ Identity Hub用户 {user_name} ({user_id}) 已有同名飞书用户 ({actual_user_id})，使用飞书账号")
+
+        # 获取用户权限 - 使用actual_user_id（飞书ID或Identity Hub ID）
         user_permissions = []
         user_roles = []
-        try:
-            permissions_response = identity_hub_client.get_user_permissions(user_info["sub"])
-            user_permissions = [
-                f"{perm['resource']}:{perm['action']}"
-                for perm in permissions_response.get("permissions", [])
-            ]
-            user_roles = permissions_response.get("roles", [])
-            logger.info(f"获取用户权限成功: {len(user_permissions)}个权限, {len(user_roles)}个角色")
-        except Exception as perm_error:
-            logger.warning(f"获取用户权限失败，使用默认权限: {perm_error}")
-            user_permissions = ["task:read"]  # 默认只读权限
 
-        # 更新session
+        # 1. 尝试从本地数据库获取权限
+        try:
+            user_permissions = get_user_permissions(actual_user_id)
+
+            # 同时获取角色信息
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT r.id, r.role_key, r.role_name, r.data_scope
+                    FROM user_roles ur
+                    JOIN roles r ON ur.role_id = r.id
+                    WHERE ur.user_id = ?
+                """, (actual_user_id,))
+                rows = cursor.fetchall()
+                user_roles = [
+                    {
+                        "role_id": row["id"],
+                        "role_key": row["role_key"],
+                        "role_name": row["role_name"],
+                        "data_scope": row["data_scope"]
+                    }
+                    for row in rows
+                ]
+
+            logger.info(f"从本地数据库获取用户权限成功: {len(user_permissions)}个权限, {len(user_roles)}个角色")
+        except Exception as local_error:
+            logger.warning(f"从本地数据库获取权限失败，尝试从Identity Hub获取: {local_error}")
+
+            # 2. 如果本地数据库失败，从Identity Hub获取
+            try:
+                permissions_response = identity_hub_client.get_user_permissions(user_id)
+                user_permissions = [
+                    f"{perm['resource']}:{perm['action']}"
+                    for perm in permissions_response.get("permissions", [])
+                ]
+                user_roles = permissions_response.get("roles", [])
+                logger.info(f"从Identity Hub获取用户权限成功: {len(user_permissions)}个权限, {len(user_roles)}个角色")
+            except Exception as perm_error:
+                logger.warning(f"获取用户权限失败，使用默认权限: {perm_error}")
+                user_permissions = ["task:read"]  # 默认只读权限
+
+        # 更新session - 使用actual_user_id
         session_manager.update_session(session_id, {
             "access_token": token_data["access_token"],
             "refresh_token": token_data.get("refresh_token"),
-            "user_id": user_info["sub"],
+            "user_id": actual_user_id,  # 使用飞书ID或Identity Hub ID
+            "identity_hub_id": user_id if is_identity_hub_user else None,  # 保存原始Identity Hub ID
             "user_name": user_info["name"],
             "user_email": user_info.get("email"),
             "user_mobile": user_info.get("mobile"),
@@ -185,46 +243,48 @@ async def callback(
             "authenticated": True
         })
 
-        logger.info(f"✅ User logged in: {user_info['name']} ({user_info['sub']})")
+        logger.info(f"✅ User logged in: {user_info['name']} (actual_id={actual_user_id}, hub_id={user_id})")
 
-        # === 新增：同步当前登录用户信息到本地engineers表 ===
+        # === 同步当前登录用户信息到本地engineers表 ===
+        # 注意：如果actual_user_id != user_id，说明使用了飞书账号，跳过同步
         try:
-            user_id = user_info["sub"]
+            if actual_user_id != user_id:
+                # 使用飞书账号，不需要同步Identity Hub用户
+                logger.info(f"✅ 使用飞书账号 {actual_user_id}，跳过同步Identity Hub用户 {user_id}")
+            else:
+                # 没有找到同名飞书用户，正常同步Identity Hub用户
+                # 从Identity Hub获取用户详情（包含部门信息）
+                user_detail = identity_hub_client.get_user_detail(user_id)
 
-            # 从Identity Hub获取用户详情（包含部门信息）
-            user_detail = identity_hub_client.get_user_detail(user_id)
+                # 提取主部门名称
+                primary_dept = user_detail.get("primary_department", {})
+                department_name = primary_dept.get("name") if primary_dept else None
 
-            # 提取主部门名称
-            primary_dept = user_detail.get("primary_department", {})
-            department_name = primary_dept.get("name") if primary_dept else None
+                # 更新或插入到engineers表
+                with get_db_connection() as conn:
+                    cursor = conn.cursor()
 
-            # 更新或插入到engineers表
-            from task_db import get_db_connection
+                    cursor.execute("""
+                        INSERT INTO engineers
+                        (user_id, name, email, mobile, department_name, status, synced_at)
+                        VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+                        ON CONFLICT(user_id) DO UPDATE SET
+                            name = excluded.name,
+                            email = excluded.email,
+                            mobile = excluded.mobile,
+                            department_name = excluded.department_name,
+                            synced_at = CURRENT_TIMESTAMP
+                    """, (
+                        user_id,
+                        user_info["name"],
+                        user_info.get("email"),
+                        user_info.get("mobile"),
+                        department_name
+                    ))
 
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
+                    conn.commit()
 
-                cursor.execute("""
-                    INSERT INTO engineers
-                    (user_id, name, email, mobile, department_name, status, synced_at)
-                    VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
-                    ON CONFLICT(user_id) DO UPDATE SET
-                        name = excluded.name,
-                        email = excluded.email,
-                        mobile = excluded.mobile,
-                        department_name = excluded.department_name,
-                        synced_at = CURRENT_TIMESTAMP
-                """, (
-                    user_id,
-                    user_info["name"],
-                    user_info.get("email"),
-                    user_info.get("mobile"),
-                    department_name
-                ))
-
-                conn.commit()
-
-            logger.info(f"✅ 已同步用户信息到本地: {user_info['name']} - {department_name}")
+                logger.info(f"✅ 已同步Identity Hub用户信息到本地: {user_info['name']} - {department_name}")
 
         except Exception as sync_error:
             # 同步失败不应阻止登录流程
@@ -357,6 +417,10 @@ async def auth_status(request: Request):
 
     return {
         "authenticated": True,
+        "user_id": session_data.get("user_id"),
         "user_name": session_data.get("user_name"),
+        "user_email": session_data.get("user_email"),
+        "permissions": session_data.get("user_permissions", []),
+        "roles": session_data.get("user_roles", []),
         "identity_hub_available": True
     }

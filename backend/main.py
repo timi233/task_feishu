@@ -23,6 +23,9 @@ from routers.engineers import router as engineers_router
 from routers.sync import router as sync_router
 from routers.approvals import router as approvals_router
 from routers.org_sync import router as org_sync_router
+from routers.roles import router as roles_router
+from routers.users import router as users_router
+from routers.user_sync import router as user_sync_router
 
 # 统一配置管理
 from config import settings
@@ -71,6 +74,9 @@ app.include_router(engineers_router)
 app.include_router(sync_router)
 app.include_router(approvals_router)
 app.include_router(org_sync_router)
+app.include_router(roles_router)
+app.include_router(users_router)
+app.include_router(user_sync_router)
 
 
 # ===== 中间件 =====
