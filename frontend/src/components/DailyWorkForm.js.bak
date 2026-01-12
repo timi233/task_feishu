@@ -1,0 +1,111 @@
+import PropTypes from 'prop-types';
+
+const PRIORITY_OPTIONS = ['非常紧急', '紧急', '重要', '普通'];
+
+/**
+ * Form for creating a daily work dispatch request.
+ */
+export default function DailyWorkForm({ formData, onChange, errors }) {
+    const data = formData || {};
+    const formErrors = errors || {};
+
+    const handleChange = (field) => (event) => {
+        onChange(field, event.target.value);
+    };
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-gray-700">
+                    任务名称 <span className="text-red-500">*</span>
+                </label>
+                <input
+                    type="text"
+                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={data.task_name || ''}
+                    onChange={handleChange('task_name')}
+                    placeholder="请输入任务名称"
+                />
+                {formErrors.task_name && <p className="mt-1 text-sm text-red-600">{formErrors.task_name}</p>}
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700">
+                    派工人员 <span className="text-red-500">*</span>
+                </label>
+                <input
+                    type="text"
+                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={data.assignee || ''}
+                    onChange={handleChange('assignee')}
+                    placeholder="请输入派工人员"
+                />
+                {formErrors.assignee && <p className="mt-1 text-sm text-red-600">{formErrors.assignee}</p>}
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700">
+                    优先级 <span className="text-red-500">*</span>
+                </label>
+                <select
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={data.priority || ''}
+                    onChange={handleChange('priority')}
+                >
+                    <option value="">请选择优先级</option>
+                    {PRIORITY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                            {option}
+                        </option>
+                    ))}
+                </select>
+                {formErrors.priority && <p className="mt-1 text-sm text-red-600">{formErrors.priority}</p>}
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                        服务开始时间 <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="date"
+                        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={data.start_date || ''}
+                        onChange={handleChange('start_date')}
+                    />
+                    {formErrors.start_date && <p className="mt-1 text-sm text-red-600">{formErrors.start_date}</p>}
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                        服务结束时间 <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="date"
+                        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={data.end_date || ''}
+                        onChange={handleChange('end_date')}
+                    />
+                    {formErrors.end_date && <p className="mt-1 text-sm text-red-600">{formErrors.end_date}</p>}
+                </div>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700">工作内容描述</label>
+                <textarea
+                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={4}
+                    value={data.description || ''}
+                    onChange={handleChange('description')}
+                    placeholder="可选: 请输入工作内容描述"
+                />
+                {formErrors.description && <p className="mt-1 text-sm text-red-600">{formErrors.description}</p>}
+            </div>
+        </div>
+    );
+}
+
+DailyWorkForm.propTypes = {
+    formData: PropTypes.object,
+    onChange: PropTypes.func.isRequired,
+    errors: PropTypes.object,
+};

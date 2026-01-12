@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>派工系统</title>
+    <script src="https://cdn.tailwindcss.com/3.3.3"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f5f7fa;
+        }
+        
+        .header-gradient {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+        }
+        
+        .day-header {
+            transition: all 0.3s ease;
+        }
+        
+        .day-header:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-card {
+            transition: all 0.2s ease;
+        }
+        
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Loading spinner styles */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #2563eb;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* 优先级颜色 */
+        .priority-high {
+            background-color: #fecaca;
+            color: #b91c1c;
+        }
+
+        .priority-medium {
+            background-color: #ffedd5;
+            color: #ea580c;
+        }
+
+        .priority-low {
+            background-color: #bfdbfe;
+            color: #1d4ed8;
+        }
+
+        /* 视图切换按钮样式 */
+        .view-btn {
+            background-color: #e5e7eb;
+            color: #4b5563;
+        }
+
+        .view-btn.active {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .view-btn:hover:not(.active) {
+            background-color: #d1d5db;
+        }
+
+        /* 月视图布局 */
+        .month-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e5e7eb;
+            border: 1px solid #e5e7eb;
+        }
+
+        .calendar-day {
+            background-color: white;
+            min-height: 120px;
+            padding: 8px;
+        }
+
+        .calendar-day-header {
+            font-weight: bold;
+            text-align: center;
+            padding: 8px;
+            background-color: #f3f4f6;
+        }
+
+        .calendar-day.other-month {
+            background-color: #f9fafb;
+            opacity: 0.6;
+        }
+
+        .calendar-day.today {
+            background-color: #dbeafe;
+        }
+
+        .day-number {
+            font-size: 14px;
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .calendar-day.other-month .day-number {
+            color: #9ca3af;
+        }
+
+        .mini-task {
+            font-size: 11px;
+            padding: 2px 4px;
+            margin-bottom: 2px;
+            border-left: 3px solid;
+            background-color: #f9fafb;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mini-task:hover {
+            transform: translateX(2px);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .mini-task.priority-high {
+            border-left-color: #dc2626;
+        }
+
+        .mini-task.priority-medium {
+            border-left-color: #ea580c;
+        }
+
+        .mini-task.priority-low {
+            border-left-color: #2563eb;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- 顶部标题区域 -->
+    <header class="header-gradient text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold">
+                        <i class="fas fa-tasks mr-3"></i>派工管理系统
+                    </h1>
+                    <p class="text-blue-100 mt-1">本周工作任务分配与进度跟踪</p>
+                </div>
+                <div class="text-blue-100">
+                    <span class="hidden md:inline-block">当前日期: </span>
+                    <span id="currentDate" class="font-medium"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主体内容区域 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 时间筛选控制栏 -->
+        <div class="bg-white shadow-md mb-6">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <!-- 视图切换按钮 -->
+                    <div class="flex items-center gap-2">
+                        <button id="weekViewBtn" class="view-btn px-4 py-2 rounded-lg font-medium transition-all active">
+                            <i class="fas fa-calendar-week mr-2"></i>周视图
+                        </button>
+                        <button id="monthViewBtn" class="view-btn px-4 py-2 rounded-lg font-medium transition-all">
+                            <i class="fas fa-calendar-alt mr-2"></i>月视图
+                        </button>
+                    </div>
+                    
+                    <!-- 日期导航 -->
+                    <div class="flex items-center gap-3">
+                        <button id="prevPeriodBtn" class="nav-btn px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all">
+                            <i class="fas fa-chevron-left mr-2"></i>
+                            <span id="prevPeriodText">上一周</span>
+                        </button>
+                        
+                        <div class="text-center min-w-[200px]">
+                            <div class="text-lg font-bold text-gray-800" id="currentPeriodText">本周</div>
+                            <div class="text-sm text-gray-500" id="dateRangeText">2025-01-01 ~ 2025-01-07</div>
+                        </div>
+                        
+                        <button id="nextPeriodBtn" class="nav-btn px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all">
+                            <span id="nextPeriodText">下一周</span>
+                            <i class="fas fa-chevron-right ml-2"></i>
+                        </button>
+                        
+                        <button id="todayBtn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all">
+                            <i class="fas fa-calendar-day mr-2"></i>今天
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 加载提示 -->
+        <div id="loadingIndicator" class="text-center">
+            <div class="spinner"></div>
+            <p>正在加载派工数据...</p>
+        </div>
+
+        <!-- 错误提示 -->
+        <div id="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative hidden" role="alert">
+            <strong class="font-bold">加载失败!</strong>
+            <span class="block sm:inline" id="errorText">无法获取派工数据。</span>
+        </div>
+
+        <!-- 登录提示 -->
+        <div id="loginPrompt" class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative hidden" role="alert">
+            <strong class="font-bold">需要登录!</strong>
+            <span class="block sm:inline">请先登录飞书以获取派工数据。</span>
+            <button id="loginButton" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                登录/刷新
+            </button>
+        </div>
+
+        <!-- 周任务概览 -->
+        <div id="taskContainer" class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8 hidden">
+            <!-- 周一 -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="day-header bg-blue-600 text-white px-4 py-3">
+                    <h2 class="font-bold text-lg flex items-center">
+                        <i class="fas fa-calendar-day mr-2"></i>周一
+                    </h2>
+                </div>
+                <div id="mondayTasks" class="p-4 space-y-3">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </div>
+            
+            <!-- 周二 -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="day-header bg-blue-700 text-white px-4 py-3">
+                    <h2 class="font-bold text-lg flex items-center">
+                        <i class="fas fa-calendar-day mr-2"></i>周二
+                    </h2>
+                </div>
+                <div id="tuesdayTasks" class="p-4 space-y-3">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </div>
+            
+            <!-- 周三 -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="day-header bg-blue-800 text-white px-4 py-3">
+                    <h2 class="font-bold text-lg flex items-center">
+                        <i class="fas fa-calendar-day mr-2"></i>周三
+                    </h2>
+                </div>
+                <div id="wednesdayTasks" class="p-4 space-y-3">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </div>
+            
+            <!-- 周四 -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="day-header bg-blue-900 text-white px-4 py-3">
+                    <h2 class="font-bold text-lg flex items-center">
+                        <i class="fas fa-calendar-day mr-2"></i>周四
+                    </h2>
+                </div>
+                <div id="thursdayTasks" class="p-4 space-y-3">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </div>
+            
+            <!-- 周五 -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="day-header bg-indigo-900 text-white px-4 py-3">
+                    <h2 class="font-bold text-lg flex items-center">
+                        <i class="fas fa-calendar-day mr-2"></i>周五
+                    </h2>
+                </div>
+                <div id="fridayTasks" class="p-4 space-y-3">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 月视图 -->
+        <div id="monthViewContainer" class="hidden mb-8">
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <!-- 星期标题 -->
+                <div class="month-calendar">
+                    <div class="calendar-day-header">日</div>
+                    <div class="calendar-day-header">一</div>
+                    <div class="calendar-day-header">二</div>
+                    <div class="calendar-day-header">三</div>
+                    <div class="calendar-day-header">四</div>
+                    <div class="calendar-day-header">五</div>
+                    <div class="calendar-day-header">六</div>
+                </div>
+                <!-- 日期格子 -->
+                <div id="calendarGrid" class="month-calendar">
+                    <!-- 动态生成日期格子 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计信息 -->
+        <div id="statsContainer" class="bg-white rounded-lg shadow p-6 mb-8 hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-chart-pie mr-2 text-blue-600"></i>本周任务统计
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-exclamation-circle text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">非常紧急</p>
+                            <p id="veryUrgentCount" class="text-xl font-bold text-gray-800">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-orange-50 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <div class="bg-orange-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-exclamation-triangle text-orange-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">紧急</p>
+                            <p id="urgentCount" class="text-xl font-bold text-gray-800">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-red-50 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <div class="bg-red-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-flag text-red-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">重要</p>
+                            <p id="importantCount" class="text-xl font-bold text-gray-800">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-100 py-6 mt-8">
+        <div class="container mx-auto px-4 text-center text-gray-600 text-sm">
+            <p>派工管理系统</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- 配置部分 ---
+        const BACKEND_BASE_URL = '';
+        // --- 配置结束 ---
+
+        const now = new Date();
+        const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('zh-CN', options);
+
+        let currentView = 'week';
+        let currentDate = new Date();
+
+        document.addEventListener('mouseover', function (e) {
+            if (e.target.closest('.task-card')) {
+                e.target.closest('.task-card').classList.add('shadow-md');
+            }
+        });
+
+        document.addEventListener('mouseout', function (e) {
+            if (e.target.closest('.task-card')) {
+                e.target.closest('.task-card').classList.remove('shadow-md');
+            }
+        });
+
+        document.getElementById('loginButton').addEventListener('click', function () {
+            const range = currentView === 'week' ? getWeekRange(currentDate) : getMonthRange(currentDate);
+            fetchTasks(range.start, range.end);
+        });
+
+        function getWeekRange(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            const monday = new Date(d.setDate(diff));
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+
+            return {
+                start: formatDate(monday),
+                end: formatDate(sunday)
+            };
+        }
+
+        function getMonthRange(date) {
+            const d = new Date(date);
+            const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
+            const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+
+            return {
+                start: formatDate(firstDay),
+                end: formatDate(lastDay)
+            };
+        }
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function updatePeriodDisplay() {
+            const range = currentView === 'week' ? getWeekRange(currentDate) : getMonthRange(currentDate);
+
+            if (currentView === 'week') {
+                const weekStart = new Date(range.start);
+                document.getElementById('currentPeriodText').textContent = `第 ${getWeekNumber(weekStart)} 周`;
+                document.getElementById('prevPeriodText').textContent = '上一周';
+                document.getElementById('nextPeriodText').textContent = '下一周';
+            } else {
+                const monthDate = new Date(currentDate);
+                document.getElementById('currentPeriodText').textContent = `${monthDate.getFullYear()}年${monthDate.getMonth() + 1}月`;
+                document.getElementById('prevPeriodText').textContent = '上个月';
+                document.getElementById('nextPeriodText').textContent = '下个月';
+            }
+
+            document.getElementById('dateRangeText').textContent = `${range.start} ~ ${range.end}`;
+        }
+
+        function getWeekNumber(date) {
+            const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+            const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+            return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        }
+
+        async function fetchTasks(startDate, endDate) {
+            const range = startDate && endDate
+                ? { start: startDate, end: endDate }
+                : currentView === 'week'
+                    ? getWeekRange(currentDate)
+                    : getMonthRange(currentDate);
+
+            console.log(`开始获取任务数据: ${range.start} 到 ${range.end}`);
+
+            document.getElementById('loginPrompt').classList.add('hidden');
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+
+            try {
+                let url = `${BACKEND_BASE_URL}/api/tasks`;
+                if (range.start && range.end) {
+                    url += `?start_date=${range.start}&end_date=${range.end}`;
+                }
+
+                console.log(`正在请求: ${url}`);
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const taskData = await response.json();
+                console.log('解析后的任务数据:', taskData);
+
+                if (currentView === 'week') {
+                    renderWeekTasks(taskData);
+                    document.getElementById('taskContainer').classList.remove('hidden');
+                    document.getElementById('monthViewContainer').classList.add('hidden');
+                } else {
+                    renderMonthTasks(taskData, range.start, range.end);
+                    document.getElementById('taskContainer').classList.add('hidden');
+                    document.getElementById('monthViewContainer').classList.remove('hidden');
+                }
+
+                updateStats(taskData);
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('statsContainer').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('获取任务数据时出错:', error);
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('errorMessage').classList.remove('hidden');
+                document.getElementById('errorText').textContent = error.message;
+            }
+        }
+
+        function renderWeekTasks(taskData) {
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
+            days.forEach(day => {
+                const container = document.getElementById(`${day}Tasks`);
+                container.innerHTML = '';
+
+                const tasks = taskData[day] || [];
+                if (tasks.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-2">暂无任务</p>';
+                    return;
+                }
+
+                tasks.forEach(task => {
+                    let priorityClass = 'priority-low';
+                    if (task.status === '紧急') {
+                        priorityClass = 'priority-medium';
+                    } else if (task.status === '非常紧急') {
+                        priorityClass = 'priority-high';
+                    }
+
+                    const taskCard = document.createElement('div');
+                    taskCard.className = 'task-card bg-white border border-gray-200 rounded p-3';
+
+                    let statusClass = 'bg-gray-100 text-gray-800';
+                    if (task.status === '进行中') {
+                        statusClass = 'bg-blue-100 text-blue-800';
+                    } else if (task.status === '已结束') {
+                        statusClass = 'bg-green-100 text-green-800';
+                    } else if (task.status === '已取消') {
+                        statusClass = 'bg-red-100 text-red-800';
+                    } else if (task.status === '已关闭') {
+                        statusClass = 'bg-gray-100 text-gray-800';
+                    }
+
+                    taskCard.innerHTML = `
+                        <h3 class="font-medium text-gray-800">${task.task_name}</h3>
+                        <div class="flex items-center mt-2 text-sm">
+                            <span class="text-gray-500 mr-3"><i class="fas fa-user mr-1"></i> ${task.assignee}</span>
+                            <span class="${priorityClass} px-2 py-1 rounded-full text-xs mr-2">${task.priority}</span>
+                            <span class="${statusClass} px-2 py-1 rounded-full text-xs">${task.status}</span>
+                        </div>
+                    `;
+                    container.appendChild(taskCard);
+                });
+            });
+        }
+
+        function renderMonthTasks(taskData, startDate, endDate) {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            const start = new Date(startDate);
+            const year = start.getFullYear();
+            const month = start.getMonth();
+
+            const firstDay = new Date(year, month, 1);
+            const startDay = new Date(firstDay);
+            startDay.setDate(startDay.getDate() - startDay.getDay());
+
+            const tasksByDate = {};
+            const allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'weekend'];
+            allDays.forEach(day => {
+                const tasks = taskData[day] || [];
+                tasks.forEach(task => {
+                    if (!task.date) {
+                        return;
+                    }
+                    if (!tasksByDate[task.date]) {
+                        tasksByDate[task.date] = [];
+                    }
+                    tasksByDate[task.date].push(task);
+                });
+            });
+
+            const today = formatDate(new Date());
+            for (let i = 0; i < 42; i++) {
+                const currentDay = new Date(startDay);
+                currentDay.setDate(currentDay.getDate() + i);
+                const dateStr = formatDate(currentDay);
+
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+
+                if (currentDay.getMonth() !== month) {
+                    dayDiv.classList.add('other-month');
+                }
+
+                if (dateStr === today) {
+                    dayDiv.classList.add('today');
+                }
+
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = currentDay.getDate();
+                dayDiv.appendChild(dayNumber);
+
+                const dayTasks = tasksByDate[dateStr] || [];
+                dayTasks.slice(0, 3).forEach(task => {
+                    const taskDiv = document.createElement('div');
+                    taskDiv.className = 'mini-task';
+
+                    let priorityClass = 'priority-low';
+                    if (task.priority === '紧急') {
+                        priorityClass = 'priority-medium';
+                    } else if (task.priority === '非常紧急') {
+                        priorityClass = 'priority-high';
+                    }
+                    taskDiv.classList.add(priorityClass);
+
+                    const displayName = task.task_name.length > 15
+                        ? `${task.task_name.substring(0, 15)}...`
+                        : task.task_name;
+                    taskDiv.textContent = displayName;
+                    taskDiv.title = `${task.task_name}\n负责人: ${task.assignee}\n优先级: ${task.priority}`;
+
+                    dayDiv.appendChild(taskDiv);
+                });
+
+                if (dayTasks.length > 3) {
+                    const moreDiv = document.createElement('div');
+                    moreDiv.className = 'text-xs text-gray-500 mt-1';
+                    moreDiv.textContent = `+${dayTasks.length - 3} 更多`;
+                    dayDiv.appendChild(moreDiv);
+                }
+
+                grid.appendChild(dayDiv);
+            }
+        }
+
+        function updateStats(taskData) {
+            let veryUrgent = 0;
+            let urgent = 0;
+            let important = 0;
+
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'weekend'];
+            days.forEach(day => {
+                const tasks = taskData[day] || [];
+                tasks.forEach(task => {
+                    if (task.priority === '非常紧急') {
+                        veryUrgent++;
+                    } else if (task.priority === '紧急') {
+                        urgent++;
+                    } else if (task.priority === '重要') {
+                        important++;
+                    }
+                });
+            });
+
+            document.getElementById('veryUrgentCount').textContent = veryUrgent;
+            document.getElementById('urgentCount').textContent = urgent;
+            document.getElementById('importantCount').textContent = important;
+        }
+
+        document.getElementById('weekViewBtn').addEventListener('click', function () {
+            if (currentView === 'week') {
+                return;
+            }
+            currentView = 'week';
+            document.getElementById('weekViewBtn').classList.add('active');
+            document.getElementById('monthViewBtn').classList.remove('active');
+            updatePeriodDisplay();
+
+            const range = getWeekRange(currentDate);
+            fetchTasks(range.start, range.end);
+        });
+
+        document.getElementById('monthViewBtn').addEventListener('click', function () {
+            if (currentView === 'month') {
+                return;
+            }
+            currentView = 'month';
+            document.getElementById('monthViewBtn').classList.add('active');
+            document.getElementById('weekViewBtn').classList.remove('active');
+            updatePeriodDisplay();
+
+            const range = getMonthRange(currentDate);
+            fetchTasks(range.start, range.end);
+        });
+
+        document.getElementById('prevPeriodBtn').addEventListener('click', function () {
+            if (currentView === 'week') {
+                currentDate.setDate(currentDate.getDate() - 7);
+            } else {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+            }
+            updatePeriodDisplay();
+
+            const range = currentView === 'week' ? getWeekRange(currentDate) : getMonthRange(currentDate);
+            fetchTasks(range.start, range.end);
+        });
+
+        document.getElementById('nextPeriodBtn').addEventListener('click', function () {
+            if (currentView === 'week') {
+                currentDate.setDate(currentDate.getDate() + 7);
+            } else {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+            }
+            updatePeriodDisplay();
+
+            const range = currentView === 'week' ? getWeekRange(currentDate) : getMonthRange(currentDate);
+            fetchTasks(range.start, range.end);
+        });
+
+        document.getElementById('todayBtn').addEventListener('click', function () {
+            currentDate = new Date();
+            updatePeriodDisplay();
+
+            const range = currentView === 'week' ? getWeekRange(currentDate) : getMonthRange(currentDate);
+            fetchTasks(range.start, range.end);
+        });
+
+        window.onload = function () {
+            currentDate = new Date();
+            updatePeriodDisplay();
+            const range = getWeekRange(currentDate);
+            fetchTasks(range.start, range.end);
+        };
+    </script>
+</body>
+</html>

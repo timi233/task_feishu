@@ -1,0 +1,145 @@
+# This Dockerfile is used to build the frontend static files
+# It's a simplified version for demonstration purposes
+
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Create a basic package.json for dependencies (if any)
+RUN echo '{"name": "task-frontend", "version": "1.0.0", "scripts": {"build": "echo Building frontend..."}}' > package.json
+
+# Create a simple index.html
+RUN mkdir -p public
+RUN echo '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>派工系统</title><script src="https://cdn.tailwindcss.com/3.3.3"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"></head><body class="bg-gray-100"><div id="root"></div><script src="./app.js"></script></body></html>' > public/index.html
+
+# Create a simple app.js that fetches data from /api/tasks
+RUN mkdir -p src
+RUN echo 'console.log("Frontend app loaded");' > src/index.js
+RUN echo 'document.addEventListener("DOMContentLoaded", function() {
+    const rootElement = document.getElementById("root");
+    rootElement.innerHTML = `
+        <div class="min-h-screen flex flex-col">
+            <header class="bg-blue-600 text-white p-4 shadow-lg">
+                <div class="container mx-auto flex justify-between items-center">
+                    <h1 class="text-2xl font-bold"><i class="fas fa-tasks mr-2"></i>派工管理系统</h1>
+                    <div class="text-sm">
+                        <span id="currentDate"></span>
+                    </div>
+                </div>
+            </header>
+            <main class="flex-grow container mx-auto p-4">
+                <div id="loading" class="text-center py-10">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                    <p class="mt-2">正在加载派工数据...</p>
+                </div>
+                <div id="error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <strong class="font-bold">加载失败!</strong>
+                    <span class="block sm:inline" id="error-message">无法获取派工数据。</span>
+                </div>
+                <div id="task-container" class="hidden grid grid-cols-1 md:grid-cols-5 gap-4"></div>
+            </main>
+            <footer class="bg-gray-200 p-4 text-center text-gray-600 text-sm">
+                <p>派工管理系统 &copy; 2025</p>
+            </footer>
+        </div>
+    `;
+
+    // Set current date
+    const now = new Date();
+    const options = { year: "numeric", month: "long", day: "numeric", weekday: "long" };
+    document.getElementById("currentDate").textContent = now.toLocaleDateString("zh-CN", options);
+
+    // Fetch tasks from the backend API via Nginx proxy (/api/)
+    fetch("/api/tasks")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Fetched data:", data);
+            displayTasks(data);
+            document.getElementById("loading").classList.add("hidden");
+            document.getElementById("task-container").classList.remove("hidden");
+        })
+        .catch(error => {
+            console.error("Error fetching tasks:", error);
+            document.getElementById("loading").classList.add("hidden");
+            document.getElementById("error-message").textContent = error.message;
+            document.getElementById("error").classList.remove("hidden");
+        });
+
+    function displayTasks(taskData) {
+        const container = document.getElementById("task-container");
+        container.innerHTML = "";
+
+        const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+        const dayNames = ["周一", "周二", "周三", "周四", "周五"];
+
+        days.forEach((day, index) => {
+            const dayColumn = document.createElement("div");
+            dayColumn.className = "bg-white rounded-lg shadow overflow-hidden";
+
+            const header = document.createElement("div");
+            header.className = `day-header ${(index === 0) ? "bg-blue-600" : (index === 1) ? "bg-blue-700" : (index === 2) ? "bg-blue-800" : (index === 3) ? "bg-blue-900" : "bg-indigo-900"} text-white px-4 py-3`;
+            header.innerHTML = `<h2 class="font-bold text-lg flex items-center"><i class="fas fa-calendar-day mr-2"></i>${dayNames[index]}</h2>`;
+            dayColumn.appendChild(header);
+
+            const tasksDiv = document.createElement("div");
+            tasksDiv.className = "p-4 space-y-3";
+            tasksDiv.id = `${day}Tasks`;
+
+            const tasks = taskData[day] || [];
+            if (tasks.length === 0) {
+                tasksDiv.innerHTML = '<p class="text-gray-500 text-center py-2">暂无任务</p>';
+            } else {
+                tasks.forEach(task => {
+                    // Priority class
+                    let priorityClass = "priority-low"; // Default important
+                    if (task.priority === "紧急") {
+                        priorityClass = "priority-medium";
+                    } else if (task.priority === "非常紧急") {
+                        priorityClass = "priority-high";
+                    }
+
+                    // Status class
+                    let statusClass = "bg-gray-100 text-gray-800"; // Default unknown status
+                    if (task.status === "进行中") {
+                        statusClass = "bg-blue-100 text-blue-800";
+                    } else if (task.status === "已结束") {
+                        statusClass = "bg-green-100 text-green-800";
+                    } else if (task.status === "已取消") {
+                        statusClass = "bg-red-100 text-red-800";
+                    } else if (task.status === "已关闭") {
+                        statusClass = "bg-gray-100 text-gray-800";
+                    }
+
+                    const taskCard = document.createElement("div");
+                    taskCard.className = "task-card bg-white border border-gray-200 rounded p-3";
+                    taskCard.innerHTML = `
+                        <h3 class="font-medium text-gray-800">${task.task_name}</h3>
+                        <div class="flex items-center mt-2 text-sm">
+                            <span class="text-gray-500 mr-3"><i class="fas fa-user mr-1"></i> ${task.assignee}</span>
+                            <span class="${priorityClass} px-2 py-1 rounded-full text-xs mr-2">${task.priority}</span>
+                            <span class="${statusClass} px-2 py-1 rounded-full text-xs">${task.status}</span>
+                        </div>
+                    `;
+                    tasksDiv.appendChild(taskCard);
+                });
+            }
+
+            dayColumn.appendChild(tasksDiv);
+            container.appendChild(dayColumn);
+        });
+    }
+});' > src/app.js
+
+# Simulate build step (just copy files)
+RUN cp -r public/* /app/ && cp src/app.js /app/
+
+FROM nginx:alpine AS runner
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+RUN rm -rf /usr/share/nginx/html/*
+COPY --from=builder /app /usr/share/nginx/html
+ENTRYPOINT ["nginx", "-g", "daemon off;"]

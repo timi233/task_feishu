@@ -1,0 +1,50 @@
+# task_feishu/docker-compose.yml
+
+version: '3.8'
+
+services:
+  # Backend service
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    # ports:
+    #   - "8000:8000"  # 后端通过Nginx代理访问，不需要直接暴露端口
+    env_file:
+      - ../.env  # 从.env文件加载所有环境变量
+    environment:
+      # 仅覆盖特定环境变量（保持Docker环境特定的配置）
+      - BACKEND_PORT=8000
+      - FRONTEND_URL=http://192.168.101.13:8080
+      - TZ=Asia/Shanghai
+    volumes:
+      # 挂载卷以持久化SQLite数据库文件
+      # 将主机的 ./data 目录挂载到容器的 /app 目录
+      # 这样数据库文件 tasks.db 就会保存在主机的 ./data 目录中
+      - ../data/db:/app/db
+      # 挂载卷以使用宿主机上修改后的filter_config.json文件
+      - ../backend/filter_config.json:/app/filter_config.json
+
+    # 健康检查(使用python内置库,不依赖curl)
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # 重启策略
+    restart: unless-stopped
+
+  # Frontend service with Nginx
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/nginx/Dockerfile.frontend
+    ports:
+      - "8080:80"  # Expose Nginx on port 8080 to avoid conflict with host's port 80
+    depends_on:
+      app:
+        condition: service_healthy  # 等待后端健康检查通过
+    # 重启策略
+    restart: unless-stopped
