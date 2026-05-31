@@ -335,7 +335,13 @@ def require_permission(permission: str):
         user_name = current_user.get("user_name", "Unknown")
 
         # 检查权限
-        has_perm = check_permission(user_id, permission)
+        # Prefer permissions attached to the authenticated session. This keeps local fallback
+        # admin accounts independent from external Identity Hub availability.
+        session_permissions = current_user.get("user_permissions") or current_user.get("permissions") or []
+        if permission in session_permissions:
+            has_perm = True
+        else:
+            has_perm = check_permission(user_id, permission)
 
         if not has_perm:
             logger.warning(

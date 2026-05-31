@@ -155,7 +155,14 @@ export function hasRole(role) {
   }
 
   const roles = getUserRoles();
-  const hasRole = roles.some(r => r.role_name === role || r === role);
+  const hasRole = roles.some(r => {
+    if (typeof r === 'string') {
+      return r === role;
+    } else if (typeof r === 'object' && r !== null) {
+      return r.role_name === role || r.role_key === role;
+    }
+    return false;
+  });
 
   if (process.env.NODE_ENV === 'development') {
     console.debug(`Role check: ${role} = ${hasRole}`);
@@ -169,7 +176,7 @@ export function hasRole(role) {
  * @returns {boolean} 是否是系统管理员
  */
 export function isSystemAdmin() {
-  return hasRole('系统管理员') || hasRole('admin');
+  return hasRole('system_admin') || hasRole('系统管理员') || hasRole('admin');
 }
 
 // ============================================

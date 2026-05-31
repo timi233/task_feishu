@@ -1,7 +1,5 @@
 /**
- * 登录按钮组件
- *
- * 根据用户登录状态显示"登录"或用户信息+登出按钮
+ * Login button component with Feishu and local fallback login.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -14,31 +12,36 @@ const LoginButton = () => {
     identity_hub_available: false
   });
   const [loading, setLoading] = useState(true);
+  const [showLocalLogin, setShowLocalLogin] = useState(false);
+  const [localUsername, setLocalUsername] = useState('admin');
+  const [localPassword, setLocalPassword] = useState('');
+  const [localLoginLoading, setLocalLoginLoading] = useState(false);
+  const [localLoginError, setLocalLoginError] = useState('');
 
-  // 检查认证状态
+  const persistUserInfo = (data) => {
+    if (data.authenticated && data.user_id) {
+      localStorage.setItem('userInfo', JSON.stringify({
+        user_id: data.user_id,
+        name: data.user_name,
+        email: data.user_email,
+        permissions: data.permissions || [],
+        roles: data.roles || []
+      }));
+    } else {
+      localStorage.removeItem('userInfo');
+    }
+  };
+
   const checkAuthStatus = async () => {
     try {
       const response = await fetch('/auth/status', {
-        credentials: 'include'  // 包含cookie
+        credentials: 'include'
       });
 
       if (response.ok) {
         const data = await response.json();
         setAuthStatus(data);
-
-        // 如果已认证，保存用户信息到localStorage（供权限检查使用）
-        if (data.authenticated && data.user_id) {
-          localStorage.setItem('userInfo', JSON.stringify({
-            user_id: data.user_id,
-            name: data.user_name,
-            email: data.user_email,
-            permissions: data.permissions || [],
-            roles: data.roles || []
-          }));
-        } else {
-          // 未认证时清除localStorage
-          localStorage.removeItem('userInfo');
-        }
+        persistUserInfo(data);
       }
     } catch (error) {
       console.error('Failed to check auth status:', error);
@@ -51,14 +54,41 @@ const LoginButton = () => {
     checkAuthStatus();
   }, []);
 
-  // 登录处理
   const handleLogin = () => {
-    // 使用相对路径,让nginx代理到后端
     const returnUrl = encodeURIComponent(window.location.pathname);
     window.location.href = `/auth/login?return_url=${returnUrl}`;
   };
 
-  // 登出处理
+  const handleLocalLogin = async (event) => {
+    event.preventDefault();
+    setLocalLoginError('');
+    setLocalLoginLoading(true);
+
+    try {
+      const response = await fetch('/auth/local-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: localUsername, password: localPassword })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || 'Local login failed');
+      }
+
+      setAuthStatus(data);
+      persistUserInfo(data);
+      setShowLocalLogin(false);
+      setLocalPassword('');
+      window.location.reload();
+    } catch (error) {
+      setLocalLoginError(error.message || 'Local login failed');
+    } finally {
+      setLocalLoginLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       const response = await fetch('/auth/logout', {
@@ -67,7 +97,6 @@ const LoginButton = () => {
       });
 
       if (response.ok) {
-        // 清除localStorage中的用户信息
         localStorage.removeItem('userInfo');
 
         setAuthStatus({
@@ -76,43 +105,70 @@ const LoginButton = () => {
           identity_hub_available: authStatus.identity_hub_available
         });
 
-        // 刷新页面以清除所有状态
         window.location.reload();
       }
     } catch (error) {
       console.error('Logout failed:', error);
-      alert('登出失败，请重试');
+      alert('Logout failed, please try again');
     }
   };
 
   if (loading) {
     return (
       <div className="login-button-container">
-        <span className="loading-text">加载中...</span>
+        <span className="loading-text">Loading...</span>
       </div>
     );
-  }
-
-  if (!authStatus.identity_hub_available) {
-    return null; // 如果Identity Hub不可用，不显示登录按钮
   }
 
   if (authStatus.authenticated) {
     return (
       <div className="login-button-container">
-        <span className="user-name">👤 {authStatus.user_name}</span>
+        <span className="user-name">{authStatus.user_name}</span>
         <button onClick={handleLogout} className="logout-button">
-          登出
+          Logout
         </button>
       </div>
     );
   }
 
   return (
-    <div className="login-button-container">
-      <button onClick={handleLogin} className="login-button">
-        登录
+    <div className="login-button-container local-login-wrapper">
+      {authStatus.identity_hub_available && (
+        <button onClick={handleLogin} className="login-button">
+          Feishu Login
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => setShowLocalLogin((value) => !value)}
+        className="local-login-toggle"
+      >
+        Local Login
       </button>
+
+      {showLocalLogin && (
+        <form className="local-login-panel" onSubmit={handleLocalLogin}>
+          <input
+            type="text"
+            value={localUsername}
+            onChange={(event) => setLocalUsername(event.target.value)}
+            placeholder="Username"
+            autoComplete="username"
+          />
+          <input
+            type="password"
+            value={localPassword}
+            onChange={(event) => setLocalPassword(event.target.value)}
+            placeholder="Password"
+            autoComplete="current-password"
+          />
+          {localLoginError && <div className="local-login-error">{localLoginError}</div>}
+          <button type="submit" disabled={localLoginLoading} className="local-login-submit">
+            {localLoginLoading ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+      )}
     </div>
   );
 };
